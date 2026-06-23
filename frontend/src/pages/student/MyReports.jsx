@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { StudentReportDetailModal } from '../../components/student/ReportDetailModal.jsx'
 
 const statusOptions = ['All', 'Lost', 'Found', 'Claimed', 'Returned']
 
@@ -88,6 +90,9 @@ export function StudentMyReports() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('All')
   const [loading, setLoading] = useState(true)
+  const [selectedReport, setSelectedReport] = useState(null)
+  const [messageCount, setMessageCount] = useState(0)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -115,6 +120,34 @@ export function StudentMyReports() {
   const lost = reports.filter((r) => r.status === 'Lost').length
   const found = reports.filter((r) => r.status === 'Found').length
   const returned = reports.filter((r) => r.status === 'Returned').length
+
+  const fetchChatCount = async (report) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/chats/${report.reportType}/${report.id}`, {
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Unable to load chat')
+      setMessageCount(data.chat.messages?.length || 0)
+    } catch {
+      setMessageCount(0)
+    }
+  }
+
+  const handleOpenReport = async (report) => {
+    setSelectedReport(report)
+    await fetchChatCount(report)
+  }
+
+  const handleCloseReport = () => {
+    setSelectedReport(null)
+    setMessageCount(0)
+  }
+
+  const handleOpenChat = () => {
+    if (!selectedReport) return
+    navigate(`/student/chat/${selectedReport.reportType}/${selectedReport.id}`)
+  }
 
   return (
     <div className="space-y-8 text-white">
@@ -177,10 +210,19 @@ export function StudentMyReports() {
             <ReportCard
               key={report.id}
               report={report}
-              onClick={() => console.log(report)}
+              onClick={() => handleOpenReport(report)}
             />
           ))}
         </div>
+      )}
+
+      {selectedReport && (
+        <StudentReportDetailModal
+          report={selectedReport}
+          messageCount={messageCount}
+          onClose={handleCloseReport}
+          onOpenChat={handleOpenChat}
+        />
       )}
     </div>
   )

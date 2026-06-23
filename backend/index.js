@@ -4,13 +4,17 @@ const dotenv = require('dotenv');
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const authRoutes = require('./routes/authRoutes');
 const lostItemRoutes = require('./routes/lostItemRoutes');
 const foundItemRoutes = require('./routes/foundItemRoutes');
 const reportsRoutes = require('./routes/reportsRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 const feedRoutes = require('./routes/feedRoutes');
 const adminRoutes = require('./routes/adminRoutes')
 
@@ -33,6 +37,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/lost-items', lostItemRoutes);
 app.use('/api/found-items', foundItemRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/chats', chatRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/admin', adminRoutes)
 app.use('/api/admin', require('./routes/adminRoutes'))
@@ -55,15 +60,20 @@ app.use((error, req, res, next) => {
 
 async function startServer() {
   try {
-    if (!process.env.MONGOURL) {
-      throw new Error('MONGOURL is missing from .env');
+    const mongoUrl = process.env.MONGOURL || process.env.MONGODB_URI;
+    if (!mongoUrl) {
+      throw new Error('MONGOURL or MONGODB_URI is missing from .env');
     }
 
     if (!process.env.JWT_SECRET) {
       throw new Error('JWT_SECRET is missing from .env');
     }
 
-    await mongoose.connect(process.env.MONGOURL, {
+    if (!process.env.MONGOURL && process.env.MONGODB_URI) {
+      console.warn('MONGOURL is not set; using MONGODB_URI from .env instead.');
+    }
+
+    await mongoose.connect(mongoUrl, {
       serverSelectionTimeoutMS: 10000,
     });
 
@@ -77,7 +87,89 @@ async function startServer() {
       console.warn('Cloudinary API secret is still a placeholder. Image uploads will store local data URIs in development.');
     }
 
-    app.listen(port, () => {
+    // Create HTTP server for Socket.IO
+    const server = http.createServer(app);
+    const io = new Server(server, {
+      cors: {
+        origin: frontendOrigin,
+        credentials: true,
+      },
+    });
+
+    // Socket.IO authentication middleware
+    io.use((socket, next) => {
+      const token = socket.handshake.auth.token;
+      
+      if (!token) {
+        console.warn('Socket connection attempt without token');
+        // Allow connection without token for testing, but mark as unauthenticated
+        socket.userId = 'anonymous';
+        socket.userRole = 'guest';
+        socket.userName = 'Anonymous User';
+        return next();
+      }
+
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.userId = decoded.id;
+        socket.userRole = decoded.role;
+        socket.userName = decoded.name;
+        next();
+      } catch (err) {
+        console.error('Socket authentication failed:', err.message);
+        // Allow connection anyway for development, but with guest role
+        socket.userId = 'anonymous';
+        socket.userRole = 'guest';
+        socket.userName = 'Anonymous User';
+        next();
+      }
+    });
+
+    // Socket.IO connection handler
+    io.on('connection', (socket) => {
+      console.log(`User ${socket.userId} connected`);
+
+      // Join chat room
+      socket.on('join_chat', ({ reportType, reportId }) => {
+        const roomId = `chat-${reportType}-${reportId}`;
+        socket.join(roomId);
+        console.log(`User ${socket.userId} joined room ${roomId}`);
+      });
+
+      // Handle new messages
+      socket.on('send_message', async (data) => {
+        try {
+          const { reportType, reportId, text } = data;
+          const roomId = `chat-${reportType}-${reportId}`;
+
+          // Broadcast message to all users in the room
+          io.to(roomId).emit('new_message', {
+            sender: {
+              _id: socket.userId,
+              name: socket.userName,
+              role: socket.userRole,
+            },
+            text,
+            createdAt: new Date(),
+          });
+        } catch (error) {
+          socket.emit('error', { message: 'Failed to send message' });
+        }
+      });
+
+      // Leave chat room
+      socket.on('leave_chat', ({ reportType, reportId }) => {
+        const roomId = `chat-${reportType}-${reportId}`;
+        socket.leave(roomId);
+        console.log(`User ${socket.userId} left room ${roomId}`);
+      });
+
+      socket.on('disconnect', () => {
+        console.log(`User ${socket.userId} disconnected`);
+      });
+    });
+
+    server.listen(port, () => {
       console.log(`Backend server running on port ${port}`);
     });
   } catch (error) {

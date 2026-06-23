@@ -45,6 +45,11 @@ const lostItemSchema = new mongoose.Schema(
       enum: ['Lost', 'Found', 'Claimed', 'Returned'],
       default: 'Lost',
     },
+    claimerName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
   },
   {
     timestamps: true,

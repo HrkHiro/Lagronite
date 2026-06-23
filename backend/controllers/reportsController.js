@@ -13,6 +13,14 @@ function mapLostItem(item) {
     location: item.locationLost,
     image: item.image,
     status: item.status,
+    claimerName: item.claimerName || null,
+    reporter: item.ownerId
+      ? {
+          id: item.ownerId._id,
+          name: item.ownerId.name,
+          email: item.ownerId.email,
+        }
+      : null,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   };
@@ -30,6 +38,14 @@ function mapFoundItem(item) {
     location: item.locationFound,
     image: item.image,
     status: item.status,
+    claimerName: item.claimerName || null,
+    reporter: item.finderId
+      ? {
+          id: item.finderId._id,
+          name: item.finderId.name,
+          email: item.finderId.email,
+        }
+      : null,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   };
@@ -78,8 +94,8 @@ function matchesDateFilter(item, dateFilter) {
 exports.listAllReportsAdmin = async (req, res) => {
   try {
     const [lostItems, foundItems] = await Promise.all([
-      LostItem.find().sort({ createdAt: -1 }),
-      FoundItem.find().sort({ createdAt: -1 }),
+      LostItem.find().populate('ownerId', 'name email').sort({ createdAt: -1 }),
+      FoundItem.find().populate('finderId', 'name email').sort({ createdAt: -1 }),
     ])
 
     const reports = [
@@ -196,6 +212,7 @@ function pickUpdateFields(reportType, body) {
     description: body.description,
     image: body.image,
     status: body.status,
+    claimerName: body.claimerName,
   };
 
   if (reportType === 'lost') {

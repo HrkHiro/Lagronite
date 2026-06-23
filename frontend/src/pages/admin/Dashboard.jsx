@@ -12,23 +12,25 @@ import {
   BarChart,
   Bar,
 } from 'recharts'
+import { fetchAdminDashboard } from '../../services/adminService.js'
 
 const COLORS = ['#10b981', '#f43f5e', '#3b82f6', '#f59e0b']
 
 export function AdminDashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/admin/dashboard', {
-          credentials: 'include',
-        })
-        const json = await res.json()
+        const json = await fetchAdminDashboard()
         setData(json)
+        setError(null)
       } catch (err) {
-        console.error(err)
+        console.error('Dashboard fetch error:', err)
+        setError(err.message)
+        setData(null)
       } finally {
         setLoading(false)
       }
@@ -40,6 +42,24 @@ export function AdminDashboard() {
   if (loading) {
     return (
       <div className="text-white p-10">Loading dashboard...</div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 text-white">
+        <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-6 text-rose-100">
+          <h2 className="text-lg font-semibold">Error Loading Dashboard</h2>
+          <p className="mt-2 text-sm">{error}</p>
+          <p className="mt-2 text-xs text-rose-200">Please make sure you are logged in and the backend server is running.</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <div className="text-white p-10">No data available</div>
     )
   }
 

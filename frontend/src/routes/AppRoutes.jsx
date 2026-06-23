@@ -20,6 +20,8 @@ import { AdminDashboard } from '../pages/admin/Dashboard.jsx'
 import { AdminPostItems } from '../pages/admin/PostItems.jsx'
 import { AdminReports } from '../pages/admin/ManageReports.jsx'
 import { AdminUsers } from '../pages/admin/Users.jsx'
+import { ReportChat } from '../pages/admin/ReportChat.jsx'
+import { StudentReportChat } from '../pages/student/StudentReportChat.jsx'
 
 export function AppRoutes() {
   return (
@@ -43,6 +45,7 @@ export function AppRoutes() {
           <Route path="student/lost-items" element={<StudentLostItems />} />
           <Route path="student/lost" element={<Navigate to="/student/lost-items" replace />} />
           <Route path="student/reports" element={<StudentMyReports />} />
+          <Route path="student/chat/:reportType/:reportId" element={<StudentReportChat />} />
         </Route>
       </Route>
 
@@ -51,6 +54,7 @@ export function AppRoutes() {
           <Route path="admin/dashboard" element={<AdminDashboard />} />
           <Route path="admin/post-items" element={<AdminPostItems />} />
           <Route path="admin/reports" element={<AdminReports />} />
+          <Route path="admin/chat/:reportType/:reportId" element={<ReportChat />} />
           <Route path="admin/users" element={<AdminUsers />} />
         </Route>
       </Route>

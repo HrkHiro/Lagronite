@@ -7,6 +7,12 @@ const PLACEHOLDER_SECRETS = new Set([
 ]);
 
 function getCloudinaryConfig() {
+  if (process.env.CLOUDINARY_URL) {
+    return {
+      cloudinary_url: process.env.CLOUDINARY_URL,
+    };
+  }
+
   return {
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -15,7 +21,11 @@ function getCloudinaryConfig() {
 }
 
 function isCloudinaryConfigured() {
-  const { cloud_name, api_key, api_secret } = getCloudinaryConfig();
+  const { cloudinary_url, cloud_name, api_key, api_secret } = getCloudinaryConfig();
+
+  if (cloudinary_url) {
+    return typeof cloudinary_url === 'string' && cloudinary_url.startsWith('cloudinary://');
+  }
 
   if (!cloud_name || !api_key || !api_secret) {
     return false;
@@ -44,7 +54,7 @@ function isDataUri(value) {
   return typeof value === 'string' && value.startsWith('data:image/');
 }
 
-async function uploadItemImage(image) {
+async function uploadImage(image, folder = 'lagronite/items') {
   if (!image) {
     throw new Error('Image is required');
   }
@@ -67,7 +77,7 @@ async function uploadItemImage(image) {
     cloudinary.uploader.upload(
       image,
       {
-        folder: 'lagronite/items',
+        folder,
         resource_type: 'image',
       },
       (error, result) => {
@@ -87,7 +97,16 @@ async function uploadItemImage(image) {
   });
 }
 
+async function uploadItemImage(image) {
+  return uploadImage(image, 'lagronite/items');
+}
+
+async function uploadProfileImage(image) {
+  return uploadImage(image, 'lagronite/users');
+}
+
 module.exports = {
   cloudinary,
   uploadItemImage,
+  uploadProfileImage,
 };

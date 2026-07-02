@@ -14,6 +14,7 @@ function buildUserPayload(user) {
     name: user.name,
     email: user.email,
     role: user.role,
+    profileImage: user.profileImage || null,
   };
 }
 
@@ -37,6 +38,52 @@ function sendAuthResponse(res, user, statusCode, rememberMe) {
     user: buildUserPayload(user),
   });
 }
+
+exports.updateMe = async (req, res) => {
+  try {
+    const { name, currentPassword, newPassword, profileImage } = req.body;
+    const user = await User.findById(req.user._id).select('+password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: 'Current password is required to set a new password' });
+      }
+
+      const passwordMatches = await bcrypt.compare(currentPassword, user.password);
+      if (!passwordMatches) {
+        return res.status(401).json({ message: 'Current password is incorrect' });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: 'New password must be at least 8 characters' });
+      }
+
+      user.password = await bcrypt.hash(newPassword, 12);
+    }
+
+    if (name) {
+      user.name = name.trim();
+    }
+
+    if (profileImage) {
+      const { uploadProfileImage } = require('../utils/cloudinary');
+      user.profileImage = await uploadProfileImage(profileImage);
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      message: 'Profile updated successfully',
+      user: buildUserPayload(user),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to update profile', error: error.message });
+  }
+};
 
 function isDatabaseAuthError(error) {
   const message = String(error?.message || '').toLowerCase();

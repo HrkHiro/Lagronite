@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useOutletContext } from 'react-router-dom'
 import { fetchAdminUsers, updateUserStatus, deleteUser } from '../../services/adminService.js'
 import {
   MdPeople,
@@ -10,23 +11,45 @@ import {
   MdBlock,
   MdDelete,
   MdPersonOff,
+  MdError,
+  MdSearchOff,
+  MdAdminPanelSettings,
 } from 'react-icons/md'
 
 const statusStyles = {
-  active: 'bg-emerald-500/10 border-emerald-400/20 text-emerald-200',
-  suspended: 'bg-amber-500/10 border-amber-400/20 text-amber-200',
-  banned: 'bg-rose-500/10 border-rose-400/20 text-rose-200',
-  pending: 'bg-sky-500/10 border-sky-400/20 text-sky-200',
+  active: {
+    dark: 'bg-emerald-500/10 border-emerald-400/20 text-emerald-200',
+    light: 'bg-emerald-50 border-emerald-400/30 text-emerald-700',
+  },
+  suspended: {
+    dark: 'bg-amber-500/10 border-amber-400/20 text-amber-200',
+    light: 'bg-amber-50 border-amber-400/30 text-amber-700',
+  },
+  banned: {
+    dark: 'bg-rose-500/10 border-rose-400/20 text-rose-200',
+    light: 'bg-rose-50 border-rose-400/30 text-rose-700',
+  },
+  pending: {
+    dark: 'bg-sky-500/10 border-sky-400/20 text-sky-200',
+    light: 'bg-sky-50 border-sky-400/30 text-sky-700',
+  },
 }
 
-const getStatusClass = (status) => {
-  return statusStyles[status?.toLowerCase()] || 'bg-white/5 border-white/10 text-slate-200'
+const getStatusClass = (status, isDark) => {
+  const style = statusStyles[status?.toLowerCase()] || {
+    dark: 'bg-white/5 border-white/10 text-slate-200',
+    light: 'bg-gray-50 border-gray-200 text-gray-600',
+  }
+  return isDark ? style.dark : style.light
 }
 
 export function AdminUsers() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const { theme } = useOutletContext() || {}
+  
+  const isDark = theme === undefined ? true : theme === 'dark'
 
   const fetchUsers = async () => {
     try {
@@ -96,7 +119,7 @@ export function AdminUsers() {
   }
 
   return (
-    <section className="relative overflow-hidden bg-slate-950 text-white">
+    <section className={`relative overflow-hidden min-h-screen ${isDark ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
       <style>{`
         @keyframes glowPulse {
           0%, 100% { opacity: 0.4; transform: scale(1); }
@@ -109,125 +132,174 @@ export function AdminUsers() {
         .glow-a { animation: glowPulse 8s ease-in-out infinite; }
         .glow-b { animation: glowPulse 9s ease-in-out infinite 1.5s; }
         .anim-rise { animation: riseIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
-        .dot-grid {
+        .dot-grid-dark {
           background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+          background-size: 28px 28px;
+          mask-image: radial-gradient(ellipse 80% 60% at 30% 40%, black 0%, transparent 75%);
+        }
+        .dot-grid-light {
+          background-image: radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px);
           background-size: 28px 28px;
           mask-image: radial-gradient(ellipse 80% 60% at 30% 40%, black 0%, transparent 75%);
         }
       `}</style>
 
-      <div className="dot-grid pointer-events-none absolute inset-0" />
-      <div className="glow-a absolute -left-32 -top-32 h-[400px] w-[400px] rounded-full bg-emerald-500/[0.06] blur-[140px]" />
-      <div className="glow-b absolute -right-32 -bottom-32 h-[400px] w-[400px] rounded-full bg-cyan-500/[0.06] blur-[140px]" />
+      {/* Background decorations */}
+      <div className={`pointer-events-none absolute inset-0 ${isDark ? 'dot-grid-dark' : 'dot-grid-light'}`} />
+      <div className={`glow-a absolute -left-32 -top-32 h-[400px] w-[400px] rounded-full ${isDark ? 'bg-emerald-500/[0.06]' : 'bg-emerald-500/[0.12]'} blur-[140px]`} />
+      <div className={`glow-b absolute -right-32 -bottom-32 h-[400px] w-[400px] rounded-full ${isDark ? 'bg-cyan-500/[0.06]' : 'bg-cyan-500/[0.12]'} blur-[140px]`} />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header card - compact, emerald accent */}
-        <div className="anim-rise mb-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl">
-          <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between lg:p-6">
+      <div className="relative z-10 mx-auto max-w-7xl px-6 py-10 sm:px-8 lg:px-10">
+        {/* Header card */}
+        <div className={`anim-rise mb-8 overflow-hidden rounded-2xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} backdrop-blur-xl shadow-lg`}>
+          <div className="flex flex-col gap-6 p-8 md:flex-row md:items-center md:justify-between lg:p-10">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-emerald-300">
-                Admin Panel
-              </p>
-              <h1 className="mt-1 text-2xl font-bold tracking-tight text-white lg:text-3xl">
-                Student account management
+              <div className="flex items-center gap-3 mb-2">
+                <MdPeople className={`text-2xl ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-600">
+                  Admin Panel
+                </p>
+              </div>
+              <h1 className={`mt-2 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Student Account Management
               </h1>
-              <p className="mt-1.5 max-w-2xl text-xs leading-5 text-slate-400">
+              <p className={`mt-3 max-w-2xl text-base leading-7 sm:text-lg ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
                 Monitor student records, update account status, and manage access.
               </p>
             </div>
-            <div className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 backdrop-blur-sm flex items-center gap-3">
-              <MdPeople className="text-emerald-400 text-2xl" />
+            <div className={`shrink-0 rounded-xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} px-6 py-5 backdrop-blur-sm shadow-lg flex items-center gap-4`}>
+              <MdPeople className={`text-3xl ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
               <div>
-                <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400">Total users</p>
-                <p className="text-2xl font-semibold text-white">{users.length}</p>
+                <p className={`text-sm font-medium uppercase tracking-[0.3em] ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                  Total Users
+                </p>
+                <p className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {users.length}
+                </p>
               </div>
             </div>
           </div>
-          <div className="h-0.5 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 opacity-80" />
+          <div className="h-1 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 opacity-80" />
         </div>
 
         {/* Content */}
         {loading ? (
-          <div className="flex h-48 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-xl">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-emerald-400" />
-            <p className="ml-3 text-sm text-slate-400">Loading users...</p>
+          <div className={`flex h-48 items-center justify-center rounded-xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} backdrop-blur-xl`}>
+            <div className={`h-10 w-10 animate-spin rounded-full border-3 ${isDark ? 'border-white/10 border-t-emerald-400' : 'border-gray-200 border-t-emerald-500'}`} />
+            <p className={`ml-4 text-base ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+              Loading users...
+            </p>
           </div>
         ) : error ? (
-          <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-5 text-rose-100 backdrop-blur-xl">
-            <h3 className="text-base font-semibold">Error</h3>
-            <p className="mt-1 text-sm">{error}</p>
+          <div className={`rounded-xl border ${isDark ? 'border-rose-500/20 bg-rose-500/10 text-rose-100' : 'border-rose-400/30 bg-rose-50 text-rose-800'} p-8 backdrop-blur-xl`}>
+            <div className="flex items-center gap-3 mb-3">
+              <MdError className="text-3xl" />
+              <h3 className="text-xl font-bold">Error</h3>
+            </div>
+            <p className="text-base">{error}</p>
+          </div>
+        ) : users.length === 0 ? (
+          <div className={`rounded-xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} p-12 text-center backdrop-blur-xl`}>
+            <MdSearchOff className={`text-6xl mx-auto mb-4 ${isDark ? 'text-slate-500' : 'text-gray-400'}`} />
+            <p className={`text-lg font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+              No users found
+            </p>
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
             {users.map((user) => (
               <article
                 key={user._id}
-                className="anim-rise rounded-xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl shadow-[0_20px_50px_-25px_rgba(0,0,0,0.75)]"
+                className={`anim-rise rounded-xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} p-6 backdrop-blur-xl shadow-lg hover:shadow-xl transition-all duration-300`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-base font-semibold text-white flex items-center gap-1.5">
-                      <MdPerson className="text-emerald-400 shrink-0" />
-                      <span className="truncate">{user.name || 'Unnamed student'}</span>
+                {/* User Header */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-lg font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      <MdPerson className={`text-xl flex-shrink-0 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                      <span className="truncate">{user.name || 'Unnamed Student'}</span>
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-400 flex items-center gap-1">
-                      <MdEmail className="text-slate-500" />
-                      {user.email}
+                    <p className={`mt-1.5 text-sm flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                      <MdEmail className="text-lg flex-shrink-0" />
+                      <span className="truncate">{user.email}</span>
                     </p>
                   </div>
-                  <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] ${getStatusClass(user.status)}`}>
+                  <span className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-semibold uppercase tracking-[0.2em] ${getStatusClass(user.status, isDark)}`}>
                     {user.status || 'Unknown'}
                   </span>
                 </div>
 
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 backdrop-blur-sm">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 flex items-center gap-1">
-                      <MdCalendarToday className="text-slate-500" />
+                {/* User Details */}
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className={`rounded-xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-gray-50'} px-4 py-3`}>
+                    <p className={`text-sm font-medium uppercase tracking-[0.2em] flex items-center gap-1.5 ${isDark ? 'text-slate-500' : 'text-gray-500'}`}>
+                      <MdCalendarToday className="text-lg" />
                       Registered
                     </p>
-                    <p className="mt-0.5 text-sm text-white">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</p>
+                    <p className={`mt-1 text-base font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                    </p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 backdrop-blur-sm">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 flex items-center gap-1">
-                      <MdBadge className="text-slate-500" />
+                  <div className={`rounded-xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-gray-50'} px-4 py-3`}>
+                    <p className={`text-sm font-medium uppercase tracking-[0.2em] flex items-center gap-1.5 ${isDark ? 'text-slate-500' : 'text-gray-500'}`}>
+                      <MdBadge className="text-lg" />
                       Role
                     </p>
-                    <p className="mt-0.5 text-sm text-white">{user.role || 'Student'}</p>
+                    <p className={`mt-1 text-base font-medium flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {user.role === 'admin' && <MdAdminPanelSettings className={`text-lg ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />}
+                      {user.role || 'Student'}
+                    </p>
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-1.5">
+                {/* Action Buttons */}
+                <div className="mt-5 flex flex-wrap gap-2.5">
                   <button
                     type="button"
                     onClick={() => updateStatus(user._id, 'activate')}
-                    className="flex items-center gap-1 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-200 transition hover:bg-emerald-500/20"
+                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${
+                      isDark
+                        ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20'
+                        : 'border-emerald-400/30 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    }`}
                   >
-                    <MdCheckCircle className="text-sm" />
+                    <MdCheckCircle className="text-lg" />
                     Activate
                   </button>
                   <button
                     type="button"
                     onClick={() => updateStatus(user._id, 'suspend')}
-                    className="flex items-center gap-1 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/20"
+                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${
+                      isDark
+                        ? 'border-amber-500/20 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20'
+                        : 'border-amber-400/30 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                    }`}
                   >
-                    <MdPersonOff className="text-sm" />
+                    <MdPersonOff className="text-lg" />
                     Suspend
                   </button>
                   <button
                     type="button"
                     onClick={() => updateStatus(user._id, 'ban')}
-                    className="flex items-center gap-1 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200 transition hover:bg-rose-500/20"
+                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${
+                      isDark
+                        ? 'border-rose-500/20 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20'
+                        : 'border-rose-400/30 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                    }`}
                   >
-                    <MdBlock className="text-sm" />
+                    <MdBlock className="text-lg" />
                     Ban
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDeleteUser(user._id)}
-                    className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-white/10"
+                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${
+                      isDark
+                        ? 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'
+                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    }`}
                   >
-                    <MdDelete className="text-sm" />
+                    <MdDelete className="text-lg" />
                     Delete
                   </button>
                 </div>

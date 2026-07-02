@@ -16,6 +16,7 @@ import { MatchSuggestions } from '../pages/student/MatchSuggestions.jsx'
 import { SearchItems } from '../pages/student/SearchItems.jsx'
 import { StudentLostItems } from '../pages/student/LostItems.jsx'
 import { StudentMyReports } from '../pages/student/MyReports.jsx'
+import { StudentSettings } from '../pages/student/Settings.jsx'
 import { AdminDashboard } from '../pages/admin/Dashboard.jsx'
 import { AdminPostItems } from '../pages/admin/PostItems.jsx'
 import { AdminReports } from '../pages/admin/ManageReports.jsx'
@@ -45,6 +46,7 @@ export function AppRoutes() {
           <Route path="student/lost-items" element={<StudentLostItems />} />
           <Route path="student/lost" element={<Navigate to="/student/lost-items" replace />} />
           <Route path="student/reports" element={<StudentMyReports />} />
+          <Route path="student/settings" element={<StudentSettings />} />
           <Route path="student/chat/:reportType/:reportId" element={<StudentReportChat />} />
         </Route>
       </Route>

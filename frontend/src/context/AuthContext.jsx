@@ -70,13 +70,18 @@ export function AuthProvider({ children }) {
       user,
       token: user?.token ?? null,
       role: user?.role ?? null,
+      rememberMe,
       isAuthenticated: Boolean(user?.token),
       login: (authData, keepLoggedIn = false) => {
         setAuthState({ user: authData, rememberMe: keepLoggedIn })
       },
       logout: () => setAuthState({ user: null, rememberMe: true }),
+      updateUser: (userUpdates) => setAuthState((prev) => ({
+        ...prev,
+        user: prev.user ? { ...prev.user, ...userUpdates } : prev.user,
+      })),
     }),
-    [user],
+    [user, rememberMe],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

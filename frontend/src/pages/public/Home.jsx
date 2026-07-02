@@ -1,36 +1,33 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { useOutletContext } from 'react-router-dom'
+import {
+  MdSearch,
+  MdCheckCircle,
+  MdRefresh,
+  MdArrowForward,
+  MdPeople,
+  MdAdminPanelSettings,
+  MdTrackChanges,
+  MdAutoAwesome,
+} from 'react-icons/md'
 import schoolLogo from '../../assets/school-logo.png'
 
 const features = [
   {
     title: 'Report Items',
     description: 'Submit lost and found reports with photos, descriptions, dates, and locations.',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
+    icon: MdCheckCircle,
   },
   {
     title: 'Smart Matching',
     description: 'Compare item details to identify possible matches between lost and found reports.',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-        <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    ),
+    icon: MdAutoAwesome,
   },
   {
     title: 'Recovery Tracking',
     description: 'Monitor item status from Lost to Returned through one centralized platform.',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <path d="M3 12a9 9 0 1 0 9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M3 12V6m0 6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
+    icon: MdTrackChanges,
   },
 ]
 
@@ -64,8 +61,11 @@ const adminFunctions = [
 
 export function Home() {
   const [particles, setParticles] = useState([])
+  // Get theme from PublicLayout context ONLY - no local state
+  const { isDark } = useOutletContext() || { isDark: true }
+  const isDarkMode = isDark
 
-  // Generate static particles once on mount (allowed side effect)
+  // Generate static particles once on mount
   useEffect(() => {
     const newParticles = [...Array(18)].map(() => {
       const size = 2 + Math.random() * 4
@@ -77,7 +77,6 @@ export function Home() {
       const ty = -20 + Math.random() * 40
       return { size, x, y, duration, delay, tx, ty }
     })
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setParticles(newParticles)
   }, [])
 
@@ -102,7 +101,7 @@ export function Home() {
   }, [])
 
   return (
-    <section className="relative overflow-hidden bg-slate-950 text-white">
+    <section className={`relative overflow-hidden ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
       <style>{`
         /* ─── KEYFRAMES ─── */
         @keyframes riseIn {
@@ -116,10 +115,6 @@ export function Home() {
         @keyframes floatY {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-12px); }
-        }
-        @keyframes floatX {
-          0%, 100% { transform: translateX(0); }
-          50% { transform: translateX(8px); }
         }
         @keyframes glowPulse {
           0%, 100% { opacity: 0.35; transform: scale(1); }
@@ -157,10 +152,6 @@ export function Home() {
           0%, 100% { box-shadow: 0 0 20px rgba(16,185,129,0.15); }
           50% { box-shadow: 0 0 60px rgba(16,185,129,0.3); }
         }
-        @keyframes textReveal {
-          0% { clip-path: inset(0 100% 0 0); }
-          100% { clip-path: inset(0 0 0 0); }
-        }
         @keyframes rotateSlow {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
@@ -178,8 +169,14 @@ export function Home() {
           background-size: 200% auto;
           animation: gradientShift 5s ease-in-out infinite;
         }
-        .dot-grid {
+        .dot-grid-dark {
           background-image: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+          background-size: 32px 32px;
+          animation: dotDrift 18s linear infinite;
+          mask-image: radial-gradient(ellipse 80% 60% at 30% 40%, black 0%, transparent 75%);
+        }
+        .dot-grid-light {
+          background-image: radial-gradient(circle, rgba(0,0,0,0.05) 1px, transparent 1px);
           background-size: 32px 32px;
           animation: dotDrift 18s linear infinite;
           mask-image: radial-gradient(ellipse 80% 60% at 30% 40%, black 0%, transparent 75%);
@@ -260,7 +257,7 @@ export function Home() {
 
         @media (prefers-reduced-motion: reduce) {
           .anim-rise, .anim-scale, .glow-a, .glow-b, .glow-c, .float-card, .float-card-2,
-          .gradient-text, .dot-grid, .scroll-cue, .badge-pill::after,
+          .gradient-text, .dot-grid-dark, .dot-grid-light, .scroll-cue, .badge-pill::after,
           .animate-on-scroll, .particle, .glow-btn {
             animation: none !important;
           }
@@ -282,7 +279,11 @@ export function Home() {
               height: p.size,
               left: `${p.x}%`,
               top: `${p.y}%`,
-              background: i % 3 === 0 ? 'rgba(16,185,129,0.3)' : i % 3 === 1 ? 'rgba(6,182,212,0.2)' : 'rgba(255,255,255,0.1)',
+              background: i % 3 === 0 
+                ? 'rgba(16,185,129,0.3)' 
+                : i % 3 === 1 
+                  ? 'rgba(6,182,212,0.2)' 
+                  : isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
               '--duration': `${p.duration}s`,
               '--delay': `${p.delay}s`,
               '--tx': `${p.tx}px`,
@@ -294,12 +295,12 @@ export function Home() {
       </div>
 
       {/* ─── DOT GRID ─── */}
-      <div className="dot-grid pointer-events-none absolute inset-0" />
+      <div className={`pointer-events-none absolute inset-0 ${isDarkMode ? 'dot-grid-dark' : 'dot-grid-light'}`} />
 
       {/* ─── GLOW ORBS ─── */}
-      <div className="glow-a absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-emerald-500/[0.07] blur-[180px]" />
-      <div className="glow-b absolute -right-40 -bottom-40 h-[500px] w-[500px] rounded-full bg-cyan-500/[0.07] blur-[180px]" />
-      <div className="glow-c absolute left-1/2 top-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-400/[0.04] blur-[120px]" />
+      <div className={`glow-a absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full ${isDarkMode ? 'bg-emerald-500/[0.07]' : 'bg-emerald-500/[0.1]'} blur-[180px]`} />
+      <div className={`glow-b absolute -right-40 -bottom-40 h-[500px] w-[500px] rounded-full ${isDarkMode ? 'bg-cyan-500/[0.07]' : 'bg-cyan-500/[0.1]'} blur-[180px]`} />
+      <div className={`glow-c absolute left-1/2 top-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full ${isDarkMode ? 'bg-emerald-400/[0.04]' : 'bg-emerald-400/[0.08]'} blur-[120px]`} />
 
       {/* ─── HERO SECTION ─── */}
       <div className="relative z-10 mx-auto flex max-w-7xl items-center px-6 py-16 md:px-10 lg:py-20">
@@ -308,20 +309,20 @@ export function Home() {
           {/* LEFT SIDE */}
           <div>
             <div
-              className="anim-rise badge-pill inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 backdrop-blur-xl"
+              className="anim-rise badge-pill inline-flex items-center gap-3 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-5 py-2 backdrop-blur-xl"
               style={{ animationDelay: '0.05s' }}
             >
-              <span className="relative flex h-2 w-2">
+              <span className="relative flex h-2.5 w-2.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
               </span>
-              <span className="text-sm font-medium text-emerald-300">
+              <span className={`text-base font-medium ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
                 Smart Lost and Found Platform
               </span>
             </div>
 
             <h1
-              className="anim-rise mt-6 text-4xl font-black leading-[1.1] md:text-5xl lg:text-6xl"
+              className="anim-rise mt-8 text-4xl font-black leading-[1.1] md:text-5xl lg:text-6xl"
               style={{ animationDelay: '0.15s' }}
             >
               Lost Something?
@@ -331,7 +332,7 @@ export function Home() {
             </h1>
 
             <p
-              className="anim-rise mt-5 max-w-xl text-base leading-7 text-slate-300 lg:text-lg lg:leading-8"
+              className={`anim-rise mt-6 max-w-xl text-lg leading-8 lg:text-xl lg:leading-9 ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}
               style={{ animationDelay: '0.28s' }}
             >
               Lagronite helps students and administrators report,
@@ -346,14 +347,18 @@ export function Home() {
             >
               <Link
                 to="/register"
-                className="shine-btn glow-btn rounded-2xl bg-emerald-500 px-8 py-3.5 font-semibold text-slate-950 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:bg-emerald-400 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.15),0_0_50px_rgba(16,185,129,0.5)]"
+                className="shine-btn glow-btn rounded-2xl bg-emerald-500 px-8 py-4 text-lg font-semibold text-white transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:bg-emerald-400 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.15),0_0_50px_rgba(16,185,129,0.5)]"
               >
                 Get Started
               </Link>
 
               <Link
                 to="/login"
-                className="rounded-2xl border border-white/10 bg-white/5 px-8 py-3.5 font-semibold text-white backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:border-white/20 hover:bg-white/10"
+                className={`rounded-2xl border px-8 py-4 text-lg font-semibold backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] ${
+                  isDarkMode
+                    ? 'border-white/10 bg-white/5 text-white hover:border-white/20 hover:bg-white/10'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                }`}
               >
                 Login
               </Link>
@@ -361,43 +366,52 @@ export function Home() {
 
             {/* FEATURES */}
             <div className="mt-12 grid gap-4 sm:grid-cols-3 lg:mt-14">
-              {features.map((feature, i) => (
-                <div
-                  key={feature.title}
-                  className="anim-rise card-hover shimmer-card group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl"
-                  style={{ animationDelay: `${0.52 + i * 0.1}s` }}
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 transition-all duration-300 group-hover:scale-110 group-hover:bg-emerald-500/20">
-                    {feature.icon}
+              {features.map((feature, i) => {
+                const Icon = feature.icon
+                return (
+                  <div
+                    key={feature.title}
+                    className={`anim-rise card-hover shimmer-card group relative overflow-hidden rounded-2xl border p-6 backdrop-blur-xl ${
+                      isDarkMode
+                        ? 'border-white/10 bg-white/5'
+                        : 'border-gray-200 bg-white'
+                    }`}
+                    style={{ animationDelay: `${0.52 + i * 0.1}s` }}
+                  >
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 transition-all duration-300 group-hover:scale-110 group-hover:bg-emerald-500/20">
+                      <Icon className="text-2xl" />
+                    </div>
+                    <h3 className={`mt-4 text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {feature.title}
+                    </h3>
+                    <p className={`mt-2 text-base leading-7 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {feature.description}
+                    </p>
+                    <span className="absolute bottom-0 left-0 h-0.5 w-0 bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-300 group-hover:w-full" />
                   </div>
-                  <h3 className="mt-4 font-semibold text-white">{feature.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-400 lg:leading-7">
-                    {feature.description}
-                  </p>
-                  <span className="absolute bottom-0 left-0 h-0.5 w-0 bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-300 group-hover:w-full" />
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
           {/* RIGHT SIDE */}
           <div className="relative mx-auto w-full max-w-[560px] lg:mx-0 lg:ml-auto">
-            <div className="pointer-events-none absolute -inset-10 -z-10 rounded-[3rem] bg-emerald-500/10 blur-[140px]" />
+            <div className={`pointer-events-none absolute -inset-10 -z-10 rounded-[3rem] ${isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-500/5'} blur-[140px]`} />
 
             <div className="relative z-10 float-card">
-              <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 shadow-[0_40px_80px_-30px_rgba(0,0,0,0.8)]">
+              <div className={`relative overflow-hidden rounded-[2.5rem] border ${isDarkMode ? 'border-white/10' : 'border-gray-200'} shadow-[0_40px_80px_-30px_rgba(0,0,0,0.8)]`}>
                 <img
                   src={schoolLogo}
                   alt="Lagro High School campus"
                   className="h-[360px] w-full object-cover object-[50%_38%] md:h-[420px]"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
+                <div className={`absolute inset-0 bg-gradient-to-t ${isDarkMode ? 'from-slate-950/80' : 'from-gray-900/60'} to-transparent`} />
                 <div className="absolute bottom-0 left-0 flex w-full items-center justify-between px-6 py-5">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-emerald-300/90">
+                    <p className="text-sm uppercase tracking-wider text-emerald-300/90">
                       Lagro High School
                     </p>
-                    <h4 className="font-semibold text-white">Our Campus</h4>
+                    <h4 className="text-lg font-semibold text-white">Our Campus</h4>
                   </div>
                   <span className="relative flex h-3 w-3">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -408,40 +422,38 @@ export function Home() {
             </div>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <div className="float-card-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 backdrop-blur-xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.6)] hover:border-emerald-400/30 transition-all duration-300 hover:-translate-y-1">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
-                  <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-                    <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-                    <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
+              <div className={`float-card-2 flex items-center gap-4 rounded-2xl border px-5 py-4 backdrop-blur-xl shadow-lg hover:border-emerald-400/30 transition-all duration-300 hover:-translate-y-1 ${
+                isDarkMode ? 'border-white/10 bg-slate-900/70' : 'border-gray-200 bg-white'
+              }`}>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+                  <MdSearch className="text-2xl" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400">Smart Matching</p>
-                  <h4 className="font-semibold text-white">Auto Compare Items</h4>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Smart Matching</p>
+                  <h4 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Auto Compare Items</h4>
                 </div>
               </div>
 
-              <div className="float-card-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 backdrop-blur-xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.6)] hover:border-cyan-400/30 transition-all duration-300 hover:-translate-y-1" style={{ animationDelay: '0.5s' }}>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-400">
-                  <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-                    <path d="M3 12a9 9 0 1 0 9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M3 12V6m0 6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+              <div className={`float-card-2 flex items-center gap-4 rounded-2xl border px-5 py-4 backdrop-blur-xl shadow-lg hover:border-cyan-400/30 transition-all duration-300 hover:-translate-y-1 ${
+                isDarkMode ? 'border-white/10 bg-slate-900/70' : 'border-gray-200 bg-white'
+              }`} style={{ animationDelay: '0.5s' }}>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-400">
+                  <MdRefresh className="text-2xl" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400">Recovery Tracking</p>
-                  <h4 className="font-semibold text-white">Lost to Returned</h4>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Recovery Tracking</p>
+                  <h4 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Lost to Returned</h4>
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-4 py-1.5 text-xs text-emerald-300 backdrop-blur-sm">
-              <span className="relative flex h-1.5 w-1.5">
+            <div className={`mt-4 flex items-center justify-center gap-3 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-5 py-2 text-sm backdrop-blur-sm ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
+              <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
               </span>
               <span>Live • 24/7 monitoring</span>
-              <span className="ml-1 text-emerald-400/50">|</span>
+              <span className="text-emerald-400/50">|</span>
               <span className="font-mono text-emerald-400">42</span>
               <span className="text-emerald-400/60">active reports</span>
             </div>
@@ -452,17 +464,19 @@ export function Home() {
       {/* ─── BOTTOM SECTIONS ─── */}
       <div className="relative z-10 mx-auto max-w-7xl px-6 pb-20 md:px-10">
         {/* Workflow */}
-        <div className="animate-on-scroll rounded-[2.5rem] border border-white/10 bg-white/[0.04] p-6 shadow-[0_24px_80px_-40px_rgba(0,0,0,0.9)] backdrop-blur-xl md:p-8">
+        <div className={`animate-on-scroll rounded-[2.5rem] border p-8 md:p-10 shadow-xl backdrop-blur-xl ${
+          isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'
+        }`}>
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">
+              <p className={`text-sm font-semibold uppercase tracking-[0.2em] ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`}>
                 How The System Works
               </p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight text-white md:text-4xl">
+              <h2 className={`mt-3 text-3xl font-bold tracking-tight md:text-4xl ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 From report to return
               </h2>
             </div>
-            <p className="max-w-xl text-sm leading-6 text-slate-400">
+            <p className={`max-w-xl text-base leading-7 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
               Lagronite gives Lagro High School a clear process for recording,
               matching, claiming, verifying, and returning lost belongings.
             </p>
@@ -472,14 +486,22 @@ export function Home() {
             {workflowSteps.map((item, i) => (
               <div
                 key={item.step}
-                className="animate-on-scroll card-hover group rounded-2xl border border-white/10 bg-slate-950/60 p-5 transition duration-300"
+                className={`animate-on-scroll card-hover group rounded-2xl border p-6 transition duration-300 ${
+                  isDarkMode ? 'border-white/10 bg-slate-950/60' : 'border-gray-200 bg-gray-50'
+                }`}
                 style={{ transitionDelay: `${i * 0.1}s` }}
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-sm font-bold text-emerald-300 transition-all duration-300 group-hover:scale-110 group-hover:bg-emerald-400/20">
+                <span className={`flex h-12 w-12 items-center justify-center rounded-xl text-base font-bold transition-all duration-300 group-hover:scale-110 ${
+                  isDarkMode ? 'bg-emerald-400/10 text-emerald-300 group-hover:bg-emerald-400/20' : 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200'
+                }`}>
                   {item.step}
                 </span>
-                <h3 className="mt-5 text-base font-semibold text-white">{item.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-400">{item.description}</p>
+                <h3 className={`mt-5 text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {item.title}
+                </h3>
+                <p className={`mt-3 text-base leading-7 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                  {item.description}
+                </p>
                 <span className="mt-5 block h-0.5 w-10 rounded-full bg-emerald-400/40 transition-all duration-300 group-hover:w-20" />
               </div>
             ))}
@@ -487,30 +509,36 @@ export function Home() {
         </div>
 
         {/* Student & Admin Functions */}
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <div className="animate-on-scroll rounded-[2.5rem] border border-white/10 bg-slate-900/65 p-6 shadow-[0_20px_70px_-45px_rgba(0,0,0,0.9)] backdrop-blur-xl">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/15 text-cyan-400">
-                <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-                  <path d="M10 1v4M6 3l2 2M14 3l-2 2M3 10h4M17 10h-4M6 17l2-2M14 17l-2-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
+        <div className="mt-8 grid gap-8 lg:grid-cols-2">
+          <div className={`animate-on-scroll rounded-[2.5rem] border p-8 shadow-xl backdrop-blur-xl ${
+            isDarkMode ? 'border-white/10 bg-slate-900/65' : 'border-gray-200 bg-white'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isDarkMode ? 'bg-cyan-500/15 text-cyan-400' : 'bg-cyan-100 text-cyan-600'}`}>
+                <MdPeople className="text-xl" />
               </div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">
+              <p className={`text-base font-semibold uppercase tracking-[0.18em] ${isDarkMode ? 'text-cyan-300' : 'text-cyan-600'}`}>
                 Student Functions
               </p>
             </div>
-            <h2 className="mt-3 text-2xl font-bold text-white">Tools for students</h2>
-            <div className="mt-6 grid gap-2.5">
+            <h2 className={`mt-3 text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              Tools for students
+            </h2>
+            <div className="mt-6 grid gap-3">
               {studentFunctions.map((item, i) => (
                 <div
                   key={item}
-                  className="animate-on-scroll flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-300 transition hover:bg-white/[0.08] hover:border-cyan-400/20"
+                  className={`animate-on-scroll flex items-start gap-3 rounded-xl border p-4 text-base transition hover:border-cyan-400/20 ${
+                    isDarkMode
+                      ? 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                  }`}
                   style={{ transitionDelay: `${i * 0.05}s` }}
                 >
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-400/10 text-xs text-cyan-200 transition-transform duration-300 hover:scale-110">
-                    <svg viewBox="0 0 20 20" fill="none" className="h-3 w-3">
-                      <path d="M5 10.5l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                  <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm ${
+                    isDarkMode ? 'bg-cyan-400/10 text-cyan-200' : 'bg-cyan-100 text-cyan-700'
+                  }`}>
+                    <MdCheckCircle className="text-base" />
                   </span>
                   <span>{item}</span>
                 </div>
@@ -518,29 +546,35 @@ export function Home() {
             </div>
           </div>
 
-          <div className="animate-on-scroll rounded-[2.5rem] border border-white/10 bg-slate-900/65 p-6 shadow-[0_20px_70px_-45px_rgba(0,0,0,0.9)] backdrop-blur-xl">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
-                <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-                  <path d="M10 1v4M6 3l2 2M14 3l-2 2M3 10h4M17 10h-4M6 17l2-2M14 17l-2-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
+          <div className={`animate-on-scroll rounded-[2.5rem] border p-8 shadow-xl backdrop-blur-xl ${
+            isDarkMode ? 'border-white/10 bg-slate-900/65' : 'border-gray-200 bg-white'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-100 text-emerald-600'}`}>
+                <MdAdminPanelSettings className="text-xl" />
               </div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300">
+              <p className={`text-base font-semibold uppercase tracking-[0.18em] ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`}>
                 Administrator Functions
               </p>
             </div>
-            <h2 className="mt-3 text-2xl font-bold text-white">Tools for administrators</h2>
-            <div className="mt-6 grid gap-2.5">
+            <h2 className={`mt-3 text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              Tools for administrators
+            </h2>
+            <div className="mt-6 grid gap-3">
               {adminFunctions.map((item, i) => (
                 <div
                   key={item}
-                  className="animate-on-scroll flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-300 transition hover:bg-white/[0.08] hover:border-emerald-400/20"
+                  className={`animate-on-scroll flex items-start gap-3 rounded-xl border p-4 text-base transition hover:border-emerald-400/20 ${
+                    isDarkMode
+                      ? 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                  }`}
                   style={{ transitionDelay: `${i * 0.05}s` }}
                 >
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-xs text-emerald-200 transition-transform duration-300 hover:scale-110">
-                    <svg viewBox="0 0 20 20" fill="none" className="h-3 w-3">
-                      <path d="M5 10.5l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                  <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm ${
+                    isDarkMode ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-100 text-emerald-700'
+                  }`}>
+                    <MdCheckCircle className="text-base" />
                   </span>
                   <span>{item}</span>
                 </div>
@@ -550,21 +584,28 @@ export function Home() {
         </div>
 
         {/* CTA */}
-        <div className="animate-on-scroll mt-6 rounded-[2.5rem] border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 p-8 text-center backdrop-blur-xl shadow-[0_20px_60px_-30px_rgba(16,185,129,0.1)]">
-          <h3 className="text-2xl font-bold text-white">Ready to get started?</h3>
-          <p className="mt-2 text-sm text-slate-400">Join Lagronite today and help build a more connected campus community.</p>
+        <div className={`animate-on-scroll mt-8 rounded-[2.5rem] border border-emerald-500/20 bg-gradient-to-br p-10 text-center backdrop-blur-xl shadow-xl ${
+          isDarkMode ? 'from-emerald-500/5 to-cyan-500/5' : 'from-emerald-50 to-cyan-50'
+        }`}>
+          <h3 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            Ready to get started?
+          </h3>
+          <p className={`mt-3 text-lg ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+            Join Lagronite today and help build a more connected campus community.
+          </p>
           <Link
             to="/register"
-            className="shine-btn glow-btn mt-6 inline-block rounded-2xl bg-emerald-500 px-10 py-3.5 font-semibold text-slate-950 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:bg-emerald-400 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.15),0_0_50px_rgba(16,185,129,0.4)]"
+            className="shine-btn glow-btn mt-8 inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-10 py-4 text-lg font-semibold text-white transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:bg-emerald-400 hover:shadow-[0_0_0_4px_rgba(16,185,129,0.15),0_0_50px_rgba(16,185,129,0.4)]"
           >
             Create Free Account
+            <MdArrowForward className="text-2xl" />
           </Link>
         </div>
       </div>
 
       {/* ─── SCROLL CUE ─── */}
-      <div className="scroll-cue absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-slate-500">
-        <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
+      <div className={`scroll-cue absolute bottom-6 left-1/2 z-10 -translate-x-1/2 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+        <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8">
           <path d="M12 5v14M6 13l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>

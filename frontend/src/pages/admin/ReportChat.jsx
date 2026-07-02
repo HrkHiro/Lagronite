@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useOutletContext } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import { fetchReportChat, sendReportMessage } from '../../services/reportsService.js'
 import { readStoredToken } from '../../services/api.js'
@@ -10,6 +10,8 @@ import {
   MdPerson,
   MdAdminPanelSettings,
   MdAccessTime,
+  MdError,
+  MdWarning,
 } from 'react-icons/md'
 
 export function ReportChat() {
@@ -22,6 +24,19 @@ export function ReportChat() {
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
   const socketRef = useRef(null)
+  const messagesEndRef = useRef(null)
+  const { theme } = useOutletContext() || {}
+  
+  const isDark = theme === undefined ? true : theme === 'dark'
+
+  // Auto-scroll to bottom when new messages arrive
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
 
   // Fetch initial chat data
   useEffect(() => {
@@ -115,7 +130,7 @@ export function ReportChat() {
   }
 
   return (
-    <section className="relative overflow-hidden bg-slate-950 text-white">
+    <section className={`relative overflow-hidden min-h-screen ${isDark ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
       <style>{`
         @keyframes glowPulse {
           0%, 100% { opacity: 0.4; transform: scale(1); }
@@ -128,145 +143,209 @@ export function ReportChat() {
         .glow-a { animation: glowPulse 8s ease-in-out infinite; }
         .glow-b { animation: glowPulse 9s ease-in-out infinite 1.5s; }
         .anim-rise { animation: riseIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
-        .dot-grid {
+        .dot-grid-dark {
           background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+          background-size: 28px 28px;
+          mask-image: radial-gradient(ellipse 80% 60% at 30% 40%, black 0%, transparent 75%);
+        }
+        .dot-grid-light {
+          background-image: radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px);
           background-size: 28px 28px;
           mask-image: radial-gradient(ellipse 80% 60% at 30% 40%, black 0%, transparent 75%);
         }
       `}</style>
 
-      <div className="dot-grid pointer-events-none absolute inset-0" />
-      <div className="glow-a absolute -left-32 -top-32 h-[400px] w-[400px] rounded-full bg-emerald-500/[0.06] blur-[140px]" />
-      <div className="glow-b absolute -right-32 -bottom-32 h-[400px] w-[400px] rounded-full bg-cyan-500/[0.06] blur-[140px]" />
+      {/* Background decorations */}
+      <div className={`pointer-events-none absolute inset-0 ${isDark ? 'dot-grid-dark' : 'dot-grid-light'}`} />
+      <div className={`glow-a absolute -left-32 -top-32 h-[400px] w-[400px] rounded-full ${isDark ? 'bg-emerald-500/[0.06]' : 'bg-emerald-500/[0.12]'} blur-[140px]`} />
+      <div className={`glow-b absolute -right-32 -bottom-32 h-[400px] w-[400px] rounded-full ${isDark ? 'bg-cyan-500/[0.06]' : 'bg-cyan-500/[0.12]'} blur-[140px]`} />
 
-      <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header - smaller, emerald accent */}
-        <div className="anim-rise mb-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl">
-          <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between lg:p-6">
+      <div className="relative z-10 mx-auto max-w-5xl px-6 py-10 sm:px-8 lg:px-10">
+        {/* Header */}
+        <div className={`anim-rise mb-8 overflow-hidden rounded-2xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} backdrop-blur-xl shadow-lg`}>
+          <div className="flex flex-col gap-6 p-8 sm:flex-row sm:items-center sm:justify-between lg:p-10">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-emerald-300">
-                Report Chat
-              </p>
-              <h1 className="mt-1 text-2xl font-bold tracking-tight text-white lg:text-3xl">
+              <div className="flex items-center gap-3 mb-2">
+                <MdChat className={`text-2xl ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-600">
+                  Report Chat
+                </p>
+              </div>
+              <h1 className={`mt-2 text-3xl font-bold tracking-tight sm:text-4xl ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 Conversation
               </h1>
-              <p className="mt-1.5 max-w-xl text-xs leading-5 text-slate-400">
+              <p className={`mt-2 max-w-xl text-base sm:text-lg ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
                 Chat with the student who submitted this report.
               </p>
             </div>
             <button
               type="button"
               onClick={() => navigate('/admin/reports')}
-              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 hover:border-white/20"
+              className={`flex items-center gap-2.5 rounded-xl border px-5 py-3 text-base font-semibold transition-all duration-200 hover:-translate-y-0.5 ${
+                isDark
+                  ? 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:border-white/20'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+              }`}
             >
-              <MdArrowBack className="text-base" />
-              Back
+              <MdArrowBack className="text-xl" />
+              Back to Reports
             </button>
           </div>
-          <div className="h-0.5 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 opacity-80" />
+          <div className="h-1 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 opacity-80" />
         </div>
 
         {/* Content */}
         {loading ? (
-          <div className="flex h-48 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-xl">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-emerald-400" />
-            <p className="ml-3 text-sm text-slate-400">Loading chat…</p>
+          <div className={`flex h-48 items-center justify-center rounded-xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} backdrop-blur-xl`}>
+            <div className={`h-10 w-10 animate-spin rounded-full border-3 ${isDark ? 'border-white/10 border-t-emerald-400' : 'border-gray-200 border-t-emerald-500'}`} />
+            <p className={`ml-4 text-base ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+              Loading chat…
+            </p>
           </div>
         ) : error ? (
-          <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-5 text-rose-100 backdrop-blur-xl">
-            <h3 className="text-base font-semibold">Error</h3>
-            <p className="mt-1 text-sm">{error}</p>
+          <div className={`rounded-xl border ${isDark ? 'border-rose-500/20 bg-rose-500/10 text-rose-100' : 'border-rose-400/30 bg-rose-50 text-rose-800'} p-8 backdrop-blur-xl`}>
+            <div className="flex items-center gap-3 mb-3">
+              <MdError className="text-3xl" />
+              <h3 className="text-xl font-bold">Connection Error</h3>
+            </div>
+            <p className="text-base">{error}</p>
           </div>
         ) : (
-          <div className="anim-rise rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.8)] backdrop-blur-xl">
-            {/* Participants - compact */}
-            <div className="mb-4 flex flex-col gap-1.5">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500 flex items-center gap-1.5">
-                <MdPerson className="text-slate-400" />
+          <div className={`anim-rise rounded-2xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} p-8 shadow-xl backdrop-blur-xl`}>
+            {/* Participants */}
+            <div className="mb-6">
+              <p className={`text-sm font-semibold uppercase tracking-[0.2em] flex items-center gap-2 mb-3 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                <MdPerson className="text-xl" />
                 Participants
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-3">
                 {chat?.participants?.map((participant) => (
                   <div
                     key={participant._id}
-                    className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-1.5 text-xs text-slate-200 backdrop-blur-sm"
+                    className={`flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-base font-medium backdrop-blur-sm ${
+                      isDark
+                        ? 'border-white/10 bg-slate-950/80 text-slate-200'
+                        : 'border-gray-200 bg-gray-50 text-gray-700'
+                    }`}
                   >
                     {participant.role === 'admin' ? (
-                      <MdAdminPanelSettings className="text-emerald-400" />
+                      <MdAdminPanelSettings className={`text-xl ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
                     ) : (
-                      <MdPerson className="text-slate-400" />
+                      <MdPerson className={`text-xl ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
                     )}
-                    {participant.name} · <span className="text-slate-500">{participant.role}</span>
+                    <span>{participant.name}</span>
+                    <span className={`text-sm px-2 py-0.5 rounded-full ${
+                      participant.role === 'admin'
+                        ? isDark ? 'bg-emerald-500/10 text-emerald-300' : 'bg-emerald-100 text-emerald-700'
+                        : isDark ? 'bg-slate-800 text-slate-400' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {participant.role}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Messages - compact */}
-            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+            {/* Messages */}
+            <div className={`space-y-3 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin ${
+              isDark ? 'scrollbar-thumb-white/10 scrollbar-track-transparent' : 'scrollbar-thumb-gray-300 scrollbar-track-gray-100'
+            }`}>
               {messages?.length ? (
                 messages.map((messageItem, idx) => {
                   const isAdmin = messageItem.sender._id === chat.participants?.find((p) => p.role === 'admin')?._id
                   return (
                     <div
                       key={`${messageItem._id || messageItem.createdAt}-${idx}`}
-                      className={`rounded-xl p-3 ${
+                      className={`rounded-xl p-5 ${
                         isAdmin
-                          ? 'bg-emerald-500/10 border border-emerald-400/20'
-                          : 'bg-white/5 border border-white/10'
+                          ? isDark
+                            ? 'bg-emerald-500/10 border border-emerald-400/20'
+                            : 'bg-emerald-50 border border-emerald-400/30'
+                          : isDark
+                            ? 'bg-white/5 border border-white/10'
+                            : 'bg-gray-50 border border-gray-200'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400">
-                        <span className="flex items-center gap-1.5">
+                      <div className="flex items-center justify-between gap-4 mb-2">
+                        <span className={`flex items-center gap-2 text-base font-medium ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                           {isAdmin ? (
-                            <MdAdminPanelSettings className="text-emerald-400" />
+                            <MdAdminPanelSettings className={`text-xl ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
                           ) : (
-                            <MdPerson className="text-slate-400" />
+                            <MdPerson className={`text-xl ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
                           )}
                           {messageItem.sender.name}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <MdAccessTime className="text-slate-500" />
-                          {new Date(messageItem.createdAt).toLocaleTimeString()}
+                        <span className={`flex items-center gap-1.5 text-sm ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+                          <MdAccessTime className="text-base" />
+                          {new Date(messageItem.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </span>
                       </div>
-                      <p className="mt-1.5 text-sm leading-5 text-slate-100">{messageItem.text}</p>
+                      <p className={`text-base leading-7 ${isDark ? 'text-slate-100' : 'text-gray-800'}`}>
+                        {messageItem.text}
+                      </p>
                     </div>
                   )
                 })
               ) : (
-                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.04] p-6 text-center text-sm text-slate-400">
-                  <MdChat className="mx-auto text-3xl text-slate-500 mb-2" />
-                  No messages yet. Start the conversation below.
+                <div className={`rounded-xl border border-dashed p-10 text-center ${
+                  isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-300 bg-gray-50'
+                }`}>
+                  <MdChat className={`text-6xl mx-auto mb-4 ${isDark ? 'text-slate-500' : 'text-gray-400'}`} />
+                  <p className={`text-lg font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                    No messages yet
+                  </p>
+                  <p className={`mt-2 text-base ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+                    Start the conversation below.
+                  </p>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
 
-            {/* Input - compact */}
-            <div className="mt-4 flex flex-col gap-3">
-              <div className="relative">
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.ctrlKey) {
-                      handleSend()
-                    }
-                  }}
-                  rows={3}
-                  placeholder="Write your message… (Ctrl+Enter to send)"
-                  className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/50 resize-none placeholder:text-slate-500"
-                />
+            {/* Input Area */}
+            <div className="mt-6 space-y-4">
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.ctrlKey) {
+                    handleSend()
+                  }
+                }}
+                rows={3}
+                placeholder="Write your message… (Ctrl+Enter to send)"
+                className={`w-full rounded-xl border px-5 py-4 text-base outline-none transition-all duration-200 resize-none placeholder:text-base ${
+                  isDark
+                    ? 'border-white/10 bg-slate-950/60 text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50'
+                    : 'border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50'
+                }`}
+              />
+              <div className="flex items-center justify-between">
+                <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+                  Press Ctrl+Enter to send
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSend}
+                  disabled={!message.trim() || sending}
+                  className="flex items-center justify-center gap-3 rounded-xl bg-emerald-500 px-7 py-3.5 text-lg font-semibold text-white transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_0_30px_rgba(52,211,153,0.4)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sending ? (
+                    <>
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Sending…
+                    </>
+                  ) : (
+                    <>
+                      <MdSend className="text-2xl" />
+                      Send message
+                    </>
+                  )}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={!message.trim() || sending}
-                className="flex items-center justify-center gap-2 self-end rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(52,211,153,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <MdSend className="text-lg" />
-                {sending ? 'Sending…' : 'Send message'}
-              </button>
             </div>
           </div>
         )}

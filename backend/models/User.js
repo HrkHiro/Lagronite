@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true, minlength: 8, select: false },
+    profileImage: { type: String, default: null },
 
     role: {
       type: String,
@@ -12,7 +13,6 @@ const userSchema = new mongoose.Schema(
       default: 'student',
     },
 
-    // 🔥 ADD THIS
     status: {
       type: String,
       enum: ['active', 'suspended', 'banned'],

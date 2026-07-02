@@ -8,6 +8,8 @@ import {
   MdMenu,
   MdChevronLeft,
   MdLogout,
+  MdLightMode,
+  MdDarkMode,
 } from 'react-icons/md'
 
 import { useAuth } from '../hooks/useAuth.js'
@@ -32,6 +34,7 @@ export default function StudentLayout() {
   const { blocked } = useAccountWatcher()
   const [showBlockedModal, setShowBlockedModal] = useState(true)
   const [isExpanded, setIsExpanded] = useState(true)
+  const [isDark, setIsDark] = useState(true) // Default dark mode
 
   const userName = user?.name || user?.fullName || 'Student'
 
@@ -46,6 +49,16 @@ export default function StudentLayout() {
 
   const toggleSidebar = () => setIsExpanded(!isExpanded)
 
+  const toggleTheme = () => {
+    setIsDark(!isDark)
+    // Apply theme class to HTML element for global CSS variables
+    if (!isDark) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }
+
   return (
     <>
       {blocked && showBlockedModal && (
@@ -58,34 +71,44 @@ export default function StudentLayout() {
         />
       )}
 
-      <div className="flex min-h-screen bg-slate-950 text-white">
+      <div className={`flex min-h-screen ${isDark ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
         {/* Sidebar */}
         <aside
-          className={`sticky top-0 flex h-screen flex-col border-r border-white/10 bg-slate-950/80 backdrop-blur-xl px-3 py-4 transition-all duration-300 ${
-            isExpanded ? 'w-[240px]' : 'w-[72px]'
+          className={`sticky top-0 flex h-screen flex-col border-r ${
+            isDark 
+              ? 'border-white/10 bg-slate-950/80 backdrop-blur-xl' 
+              : 'border-gray-200 bg-white/80 backdrop-blur-xl'
+          } px-4 py-6 transition-all duration-300 ${
+            isExpanded ? 'w-[280px]' : 'w-[80px]'
           }`}
         >
           {/* Brand & Toggle */}
-          <div className={`flex items-center ${isExpanded ? 'justify-between' : 'justify-center'} mb-6 shrink-0`}>
+          <div className={`flex items-center ${isExpanded ? 'justify-between' : 'justify-center'} mb-8 shrink-0`}>
             {isExpanded && (
               <div>
-                <h1 className="text-lg font-bold tracking-tight text-white">Lagronite</h1>
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-emerald-400/80">
+                <h1 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Lagronite
+                </h1>
+                <p className="text-sm font-medium uppercase tracking-[0.2em] text-emerald-500">
                   Student Space
                 </p>
               </div>
             )}
             <button
               onClick={toggleSidebar}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-300 transition hover:bg-white/10 hover:text-white"
+              className={`flex h-10 w-10 items-center justify-center rounded-lg border transition-colors ${
+                isDark 
+                  ? 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/10 hover:text-white' 
+                  : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               aria-label={isExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
             >
-              {isExpanded ? <MdChevronLeft className="text-lg" /> : <MdMenu className="text-lg" />}
+              {isExpanded ? <MdChevronLeft className="text-2xl" /> : <MdMenu className="text-2xl" />}
             </button>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1.5 overflow-y-auto pb-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+          {/* Navigation - LARGER icons and text */}
+          <nav className="flex-1 space-y-2 overflow-y-auto pb-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             {navItems.map((item) => {
               const Icon = item.icon
               return (
@@ -93,60 +116,106 @@ export default function StudentLayout() {
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                    `flex items-center gap-4 rounded-xl px-4 py-3 text-base font-medium transition-all duration-200 ${
                       isActive
-                        ? 'bg-emerald-500/10 text-emerald-300 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.2)]'
-                        : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                        ? 'bg-emerald-500/10 text-emerald-400 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.2)]'
+                        : isDark
+                          ? 'text-slate-400 hover:bg-white/5 hover:text-white'
+                          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                     } ${!isExpanded && 'justify-center'}`
                   }
                 >
-                  <Icon className={`text-xl ${!isExpanded ? 'mr-0' : ''}`} />
-                  {isExpanded && <span>{item.label}</span>}
+                  <Icon className={`text-2xl flex-shrink-0 ${!isExpanded ? 'mr-0' : ''}`} />
+                  {isExpanded && <span className="text-base">{item.label}</span>}
                 </NavLink>
               )
             })}
           </nav>
 
-          {/* User & Logout – visible only when expanded */}
+          {/* Theme Toggle Button */}
+          <div className={`shrink-0 ${isExpanded ? 'mb-4' : 'mb-4 flex justify-center'}`}>
+            <button
+              onClick={toggleTheme}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all duration-200 ${
+                isExpanded ? 'w-full' : 'w-auto'
+              } ${
+                isDark 
+                  ? 'text-slate-300 hover:bg-white/5 hover:text-white' 
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              } ${!isExpanded && 'justify-center'}`}
+              aria-label={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {isDark ? (
+                <MdLightMode className="text-2xl flex-shrink-0" />
+              ) : (
+                <MdDarkMode className="text-2xl flex-shrink-0" />
+              )}
+              {isExpanded && <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
+            </button>
+          </div>
+
+          {/* User Profile & Logout - LARGER sizes */}
           {isExpanded ? (
-            <div className="shrink-0 space-y-3 border-t border-white/10 pt-4">
-              <div className="flex items-center gap-3 rounded-xl bg-white/[0.04] p-3 backdrop-blur-sm">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 text-sm font-bold text-slate-950">
-                  {getInitial(userName)}
+            <div className={`shrink-0 space-y-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'} pt-6`}>
+              {/* User Info */}
+              <button
+                type="button"
+                onClick={() => navigate('/student/settings')}
+                className={`flex items-center gap-4 rounded-xl ${
+                  isDark ? 'bg-white/[0.04]' : 'bg-gray-50'
+                } p-4 backdrop-blur-sm text-left transition hover:bg-emerald-500/10`}
+              >
+                {user?.profileImage ? (
+                  <img
+                    src={user.profileImage}
+                    alt={userName}
+                    className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 text-lg font-bold text-slate-950">
+                    {getInitial(userName)}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className={`truncate text-base font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {userName}
+                  </p>
+                  <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                    Student
+                  </p>
                 </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-white">{userName}</p>
-                  <p className="text-xs text-slate-400">Student</p>
-                </div>
-              </div>
+              </button>
+
+              {/* Logout Button */}
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-2.5 text-sm font-medium text-rose-300 transition hover:bg-rose-500/10 hover:text-rose-200"
+                className={`flex w-full items-center justify-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/5 px-5 py-3 text-base font-medium text-rose-400 transition hover:bg-rose-500/10 hover:text-rose-300`}
               >
-                <MdLogout className="text-lg" />
-                Logout
+                <MdLogout className="text-2xl flex-shrink-0" />
+                <span>Logout</span>
               </button>
             </div>
           ) : (
-            // Collapsed version: only avatar and logout icon
-            <div className="shrink-0 flex flex-col items-center gap-3 border-t border-white/10 pt-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 text-sm font-bold text-slate-950">
+            /* Collapsed sidebar - Only icons */
+            <div className={`shrink-0 flex flex-col items-center gap-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'} pt-6`}>
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 text-lg font-bold text-slate-950">
                 {getInitial(userName)}
               </div>
               <button
                 onClick={handleLogout}
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-300 transition hover:bg-rose-500/10 hover:text-rose-200"
+                className={`flex h-10 w-10 items-center justify-center rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-400 transition hover:bg-rose-500/10 hover:text-rose-300`}
                 aria-label="Logout"
               >
-                <MdLogout className="text-lg" />
+                <MdLogout className="text-2xl" />
               </button>
             </div>
           )}
         </aside>
 
-        {/* Main Content */}
-        <main className={`flex-1 overflow-y-auto ${isExpanded ? 'px-6 py-6' : 'px-4 py-4'}`}>
-          <Outlet />
+        {/* Main Content Area */}
+        <main className={`flex-1 overflow-y-auto ${isExpanded ? 'px-8 py-8' : 'px-6 py-6'}`}>
+          {/* Pass theme to child components via Outlet context */}
+          <Outlet context={{ theme: isDark ? 'dark' : 'light' }} />
         </main>
       </div>
     </>

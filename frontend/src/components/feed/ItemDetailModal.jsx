@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { addFeedComment, fetchFeedItem, toggleFeedReaction } from '../../services/feedService.js'
 
 const REACTIONS = [
@@ -9,7 +10,6 @@ const REACTIONS = [
 
 function formatDateTime(value) {
   if (!value) return 'N/A'
-
   return new Date(value).toLocaleString(undefined, {
     year: 'numeric',
     month: 'short',
@@ -21,28 +21,19 @@ function formatDateTime(value) {
 
 function getStatusClass(status) {
   switch (status) {
-    case 'Lost':
-      return 'border-rose-500/20 bg-rose-500/10 text-rose-300'
-    case 'Found':
-      return 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
-    case 'Claimed':
-      return 'border-amber-500/20 bg-amber-500/10 text-amber-300'
-    case 'Returned':
-      return 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
-    default:
-      return 'border-white/10 bg-white/[0.04] text-slate-300'
+    case 'Lost': return 'border-rose-500/20 bg-rose-500/10 text-rose-300'
+    case 'Found': return 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
+    case 'Claimed': return 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+    case 'Returned': return 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+    default: return 'border-white/10 bg-white/[0.04] text-slate-300'
   }
 }
 
 function DetailTile({ label, value }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <p className="text-xs uppercase tracking-wider text-slate-500">
-        {label}
-      </p>
-      <p className="mt-2 font-medium text-white">
-        {value || 'N/A'}
-      </p>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+      <p className="text-xs uppercase tracking-wider text-slate-500">{label}</p>
+      <p className="mt-1 font-medium text-white text-sm">{value || 'N/A'}</p>
     </div>
   )
 }
@@ -56,60 +47,41 @@ export function ItemDetailModal({ item, onClose, onUpdated }) {
   const [reactingType, setReactingType] = useState('')
   const [error, setError] = useState('')
 
-  const loadDetails = async () => {
-    setLoading(true)
-    setError('')
-
-    try {
-      const data = await fetchFeedItem(item.reportType, item.id)
-      setDetails(data.item)
-      setComments(data.comments || [])
-    } catch (err) {
-      setError(err.message || 'Failed to load item details')
-    } finally {
-      setLoading(false)
-    }
+  const fetchItemData = async () => {
+    const data = await fetchFeedItem(item.reportType, item.id)
+    return data
   }
 
   useEffect(() => {
     let ignore = false
-
-    const fetchDetails = async () => {
-      setLoading(true)
-      setError('')
-
+    const load = async () => {
       try {
-        const data = await fetchFeedItem(item.reportType, item.id)
-
+        const data = await fetchItemData()
         if (!ignore) {
           setDetails(data.item)
           setComments(data.comments || [])
+          setError('')
         }
       } catch (err) {
         if (!ignore) {
           setError(err.message || 'Failed to load item details')
         }
       } finally {
-        if (!ignore) {
-          setLoading(false)
-        }
+        if (!ignore) setLoading(false)
       }
     }
-
-    Promise.resolve().then(fetchDetails)
-
-    return () => {
-      ignore = true
-    }
-  }, [item.id, item.reportType])
+    load()
+    return () => { ignore = true }
+  }, [item.id, item.reportType]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleReaction = async (reactionType) => {
     setReactingType(reactionType)
     setError('')
-
     try {
       await toggleFeedReaction(item.reportType, item.id, reactionType)
-      await loadDetails()
+      const data = await fetchItemData()
+      setDetails(data.item)
+      setComments(data.comments || [])
       onUpdated?.()
     } catch (err) {
       setError(err.message || 'Failed to update reaction')
@@ -120,26 +92,17 @@ export function ItemDetailModal({ item, onClose, onUpdated }) {
 
   const handleCommentSubmit = async (event) => {
     event.preventDefault()
-
     const content = commentText.trim()
-    if (!content) {
-      return
-    }
+    if (!content) return
 
     setSubmittingComment(true)
     setError('')
-
     try {
       const data = await addFeedComment(item.reportType, item.id, content)
-      setComments((current) => [data.comment, ...current])
+      setComments((prev) => [data.comment, ...prev])
       setCommentText('')
-      setDetails((current) =>
-        current
-          ? {
-              ...current,
-              commentCount: (current.commentCount || 0) + 1,
-            }
-          : current,
+      setDetails((prev) =>
+        prev ? { ...prev, commentCount: (prev.commentCount || 0) + 1 } : prev
       )
       onUpdated?.()
     } catch (err) {
@@ -151,29 +114,38 @@ export function ItemDetailModal({ item, onClose, onUpdated }) {
 
   const activeItem = details || item
 
-  return (
+  // The modal content (same compact design)
+  const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 px-4 py-6 backdrop-blur-xl">
-      <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-6 text-white shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)] backdrop-blur-xl md:p-8">
+      <style>{`
+        @keyframes riseIn {
+          from { opacity: 0; transform: translateY(18px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-rise {
+          animation: riseIn 0.3s ease-out both;
+        }
+      `}</style>
+
+      <div className="animate-rise w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-white shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)] backdrop-blur-xl">
+        {/* Header + close */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-emerald-400">
-              {activeItem.reportType === 'lost' ? 'Lost Item Details' : 'Found Item Details'}
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+              {activeItem.reportType === 'lost' ? 'Lost Item' : 'Found Item'}
             </p>
-            <h3 className="mt-2 text-2xl font-semibold md:text-3xl">
-              {activeItem.itemName}
-            </h3>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <h3 className="mt-1 text-2xl font-bold text-white">{activeItem.itemName}</h3>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className={`rounded-full border px-3 py-1 text-xs font-medium ${getStatusClass(activeItem.status)}`}>
                 {activeItem.status}
               </span>
-              {activeItem.postedByAdmin ? (
-                <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
-                  Posted by Admin
+              {activeItem.postedByAdmin && (
+                <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">
+                  Admin
                 </span>
-              ) : null}
+              )}
             </div>
           </div>
-
           <button
             type="button"
             onClick={onClose}
@@ -183,68 +155,57 @@ export function ItemDetailModal({ item, onClose, onUpdated }) {
           </button>
         </div>
 
-        {error ? (
-          <div className="mt-5 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        {error && (
+          <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
             {error}
           </div>
-        ) : null}
+        )}
 
         {loading ? (
-          <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-10 text-center text-slate-400 backdrop-blur-xl">
-            Loading full details...
+          <div className="mt-6 flex items-center justify-center py-10 text-slate-400">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-emerald-400" />
           </div>
         ) : (
           <>
-            <div className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.04] shadow-[0_20px_50px_-25px_rgba(16,185,129,0.25)] backdrop-blur-xl">
+            {activeItem.image && (
+              <div className="mt-5 overflow-hidden rounded-[1.5rem] border border-white/10">
                 <img
                   src={activeItem.image}
                   alt={activeItem.itemName}
-                  className="max-h-[560px] w-full object-cover"
+                  className="w-full max-h-56 object-cover"
                 />
               </div>
+            )}
 
-              <div className="space-y-5">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <DetailTile label="Category" value={activeItem.category} />
-                  <DetailTile label="Color" value={activeItem.color} />
-                  <DetailTile label="Location" value={activeItem.location} />
-                  <DetailTile label="Date" value={formatDateTime(activeItem.date)} />
-                  <DetailTile label="Posted By" value={activeItem.postedBy?.name || 'Unknown'} />
-                  <DetailTile label="Posted On" value={formatDateTime(activeItem.createdAt)} />
-                </div>
-
-                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                  <h4 className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
-                    Description
-                  </h4>
-                  <p className="mt-3 leading-7 text-slate-300">
-                    {activeItem.description || 'No description provided.'}
-                  </p>
-                </div>
-              </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <DetailTile label="Category" value={activeItem.category} />
+              <DetailTile label="Color" value={activeItem.color} />
+              <DetailTile label="Location" value={activeItem.location} />
+              <DetailTile label="Date" value={formatDateTime(activeItem.date)} />
+              <DetailTile label="Posted By" value={activeItem.postedBy?.name || 'Unknown'} />
+              <DetailTile label="Posted On" value={formatDateTime(activeItem.createdAt)} />
             </div>
 
-            <section className="mt-8 rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
-              <h4 className="text-lg font-semibold text-white">
-                React to this post
-              </h4>
-              <p className="mt-1 text-sm text-slate-400">
-                Tap a reaction to show interest or remove your reaction.
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">Description</p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                {activeItem.description || 'No description provided.'}
               </p>
+            </div>
 
-              <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <h4 className="text-sm font-semibold text-white">React</h4>
+              <div className="mt-3 flex flex-wrap gap-2">
                 {REACTIONS.map((reaction) => {
                   const isActive = activeItem.userReaction === reaction.type
                   const count = activeItem.reactions?.[reaction.type] || 0
-
                   return (
                     <button
                       key={reaction.type}
                       type="button"
                       disabled={reactingType === reaction.type}
                       onClick={() => handleReaction(reaction.type)}
-                      className={`rounded-2xl border px-4 py-2 text-sm transition disabled:opacity-60 ${
+                      className={`rounded-xl border px-3 py-1.5 text-xs transition disabled:opacity-60 ${
                         isActive
                           ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-300'
                           : 'border-white/10 bg-slate-900/60 text-slate-300 hover:border-emerald-400/20 hover:bg-white/10'
@@ -255,64 +216,50 @@ export function ItemDetailModal({ item, onClose, onUpdated }) {
                   )
                 })}
               </div>
-            </section>
+            </div>
 
-            <section className="mt-6 rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h4 className="text-lg font-semibold text-white">
-                    Comments
-                  </h4>
-                  <p className="mt-1 text-sm text-slate-400">
-                    {comments.length} comment{comments.length === 1 ? '' : 's'}
-                  </p>
-                </div>
-              </div>
-
-              <form className="mt-4 space-y-3" onSubmit={handleCommentSubmit}>
-                <textarea
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <h4 className="text-sm font-semibold text-white">
+                Comments ({comments.length})
+              </h4>
+              <form className="mt-3 flex gap-2" onSubmit={handleCommentSubmit}>
+                <input
                   value={commentText}
-                  onChange={(event) => setCommentText(event.target.value)}
-                  rows="3"
-                  placeholder="Write a comment about this item..."
-                  className="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-500/20"
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Write a comment..."
+                  className="flex-1 rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400/50"
                 />
                 <button
                   type="submit"
                   disabled={submittingComment || !commentText.trim()}
-                  className="rounded-2xl bg-emerald-500 px-5 py-2.5 text-sm font-medium text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-medium text-slate-950 hover:bg-emerald-400 disabled:opacity-60"
                 >
-                  {submittingComment ? 'Posting...' : 'Post Comment'}
+                  Post
                 </button>
               </form>
 
-              <ul className="mt-5 space-y-3">
+              <ul className="mt-3 space-y-2">
                 {comments.length === 0 ? (
-                  <li className="rounded-2xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-slate-400">
-                    No comments yet. Be the first to comment.
-                  </li>
+                  <li className="text-xs text-slate-400 py-2">No comments yet.</li>
                 ) : (
                   comments.map((comment) => (
-                    <li key={comment.id} className="rounded-xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur-xl">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-medium text-white">
-                          {comment.author?.name || 'Student'}
-                        </p>
-                        <span className="text-xs text-slate-500">
-                          {formatDateTime(comment.createdAt)}
-                        </span>
+                    <li key={comment.id} className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-white">{comment.author?.name || 'Student'}</p>
+                        <span className="text-xs text-slate-500">{formatDateTime(comment.createdAt)}</span>
                       </div>
-                      <p className="mt-2 text-sm leading-6 text-slate-300">
-                        {comment.content}
-                      </p>
+                      <p className="mt-1 text-sm text-slate-300">{comment.content}</p>
                     </li>
                   ))
                 )}
               </ul>
-            </section>
+            </div>
           </>
         )}
       </div>
     </div>
   )
+
+  // Render via portal to body – escapes any parent container with backdrop-filter
+  return createPortal(modalContent, document.body)
 }

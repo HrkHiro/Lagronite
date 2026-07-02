@@ -1,61 +1,141 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import {
+  MdDashboard,
+  MdPostAdd,
+  MdAssignment,
+  MdPeople,
+  MdMenu,
+  MdChevronLeft,
+  MdLogout,
+  MdAdminPanelSettings,
+} from 'react-icons/md'
 import { useAuth } from '../hooks/useAuth.js'
 import { logoutUser } from '../services/authService.js'
 
-const linkClass = ({ isActive }) =>
-  [
-    'rounded-full px-4 py-2 text-sm transition',
-    isActive ? 'bg-amber-400 text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-white',
-  ].join(' ')
+const navItems = [
+  { to: '/admin/dashboard', icon: MdDashboard, label: 'Dashboard' },
+  { to: '/admin/post-items', icon: MdPostAdd, label: 'Post Items' },
+  { to: '/admin/reports', icon: MdAssignment, label: 'Reports' },
+  { to: '/admin/users', icon: MdPeople, label: 'Users' },
+]
+
+function getInitial(name) {
+  return (name || 'Admin').trim().charAt(0).toUpperCase() || 'A'
+}
 
 export function AdminLayout() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
+  const [isExpanded, setIsExpanded] = useState(true)
+
+  const userName = user?.name || 'Administrator'
 
   const handleLogout = async () => {
     try {
       await logoutUser()
     } catch {
-      // Clear local session even if the server cookie is already gone.
+      // Ignore server errors – local logout still runs
     } finally {
       logout()
       navigate('/login', { replace: true })
     }
   }
 
+  const toggleSidebar = () => setIsExpanded(!isExpanded)
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-white/10 bg-slate-950/80 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-amber-300">Admin Space</p>
-            <h1 className="text-xl font-semibold text-white">Lagronite Control Center</h1>
-          </div>
-          <nav className="flex flex-wrap gap-2">
-            <NavLink to="/admin/dashboard" className={linkClass}>
-              Dashboard
-            </NavLink>
-            <NavLink to="/admin/post-items" className={linkClass}>
-              Post Items
-            </NavLink>
-            <NavLink to="/admin/reports" className={linkClass}>
-              Reports
-            </NavLink>
-            <NavLink to="/admin/users" className={linkClass}>
-              Users
-            </NavLink>
+    <div className="flex min-h-screen bg-slate-950 text-white">
+      {/* SIDEBAR – collapsible, glass morphic */}
+      <aside
+        className={`sticky top-0 flex h-screen flex-col border-r border-white/10 bg-slate-950/80 backdrop-blur-xl px-3 py-4 transition-all duration-300 ${
+          isExpanded ? 'w-[240px]' : 'w-[72px]'
+        }`}
+      >
+        {/* Brand & Toggle */}
+        <div className={`flex items-center ${isExpanded ? 'justify-between' : 'justify-center'} mb-6 shrink-0`}>
+          {isExpanded && (
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-white">Lagronite</h1>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-emerald-400/80">
+                Admin Console
+              </p>
+            </div>
+          )}
+          <button
+            onClick={toggleSidebar}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-300 transition hover:bg-white/10 hover:text-white"
+            aria-label={isExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+          >
+            {isExpanded ? <MdChevronLeft className="text-lg" /> : <MdMenu className="text-lg" />}
+          </button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1.5 overflow-y-auto pb-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-emerald-500/10 text-emerald-300 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.2)]'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                  } ${!isExpanded && 'justify-center'}`
+                }
+              >
+                <Icon className={`text-xl ${!isExpanded ? 'mr-0' : ''}`} />
+                {isExpanded && <span>{item.label}</span>}
+              </NavLink>
+            )
+          })}
+        </nav>
+
+        {/* User & Logout */}
+        {isExpanded ? (
+          <div className="shrink-0 space-y-3 border-t border-white/10 pt-4">
+            <div className="flex items-center gap-3 rounded-xl bg-white/[0.04] p-3 backdrop-blur-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 text-sm font-bold text-slate-950">
+                {getInitial(userName)}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-white">{userName}</p>
+                <p className="text-xs text-slate-400 flex items-center gap-1">
+                  <MdAdminPanelSettings className="text-emerald-400" />
+                  Admin
+                </p>
+              </div>
+            </div>
             <button
-              type="button"
               onClick={handleLogout}
-              className="rounded-full border border-rose-400/20 bg-rose-500/10 px-4 py-2 text-sm text-rose-200 transition hover:bg-rose-500/20 hover:text-white"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-2.5 text-sm font-medium text-rose-300 transition hover:bg-rose-500/10 hover:text-rose-200"
             >
+              <MdLogout className="text-lg" />
               Logout
             </button>
-          </nav>
-        </div>
-      </header>
+          </div>
+        ) : (
+          // Collapsed version: only avatar and logout icon
+          <div className="shrink-0 flex flex-col items-center gap-3 border-t border-white/10 pt-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 text-sm font-bold text-slate-950">
+              {getInitial(userName)}
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-300 transition hover:bg-rose-500/10 hover:text-rose-200"
+              aria-label="Logout"
+            >
+              <MdLogout className="text-lg" />
+            </button>
+          </div>
+        )}
+      </aside>
 
-      <main className="mx-auto w-full max-w-7xl px-6 py-10">
+      {/* MAIN CONTENT – adapt padding based on sidebar state */}
+      <main className={`flex-1 overflow-y-auto ${isExpanded ? 'px-6 py-6' : 'px-4 py-4'}`}>
         <Outlet />
       </main>
     </div>

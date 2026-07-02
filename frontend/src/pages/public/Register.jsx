@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { MdPerson, MdEmail, MdLock, MdArrowBack, MdPersonAdd } from 'react-icons/md'
 import { useAuth } from '../../hooks/useAuth.js'
 import { registerStudent } from '../../services/authService.js'
 
@@ -19,10 +20,7 @@ export function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      return
-    }
-
+    if (!isAuthenticated) return
     navigate(role === 'admin' ? '/admin/dashboard' : '/student/dashboard', { replace: true })
   }, [isAuthenticated, navigate, role])
 
@@ -33,19 +31,16 @@ export function Register() {
     if (!formData.name.trim()) {
       nextErrors.name = 'Name is required'
     }
-
     if (!formData.email.trim()) {
       nextErrors.email = 'Email is required'
     } else if (!emailPattern.test(formData.email.trim())) {
       nextErrors.email = 'Enter a valid email address'
     }
-
     if (!formData.password) {
       nextErrors.password = 'Password is required'
     } else if (formData.password.length < 8) {
       nextErrors.password = 'Password must be at least 8 characters'
     }
-
     if (formData.confirmPassword !== formData.password) {
       nextErrors.confirmPassword = 'Passwords do not match'
     }
@@ -56,19 +51,12 @@ export function Register() {
 
   const handleChange = (event) => {
     const { name, value } = event.target
-
-    setFormData((current) => ({
-      ...current,
-      [name]: value,
-    }))
+    setFormData((current) => ({ ...current, [name]: value }))
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-
-    if (!validate()) {
-      return
-    }
+    if (!validate()) return
 
     setIsSubmitting(true)
     setErrors(initialErrors)
@@ -79,7 +67,6 @@ export function Register() {
         email: formData.email.trim(),
         password: formData.password,
       })
-
       login(response.user ? { ...response.user, token: response.token } : response, true)
       navigate('/student/dashboard', { replace: true })
     } catch (error) {
@@ -90,90 +77,129 @@ export function Register() {
   }
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2 lg:items-center">
-      <section className="space-y-4 text-white">
-        <p className="text-sm uppercase tracking-[0.2em] text-amber-300">Join Lagronite</p>
-        <h2 className="text-4xl font-semibold tracking-tight md:text-5xl">Create your student account in minutes.</h2>
-        <p className="max-w-xl text-slate-300">
-          Register to submit lost item reports, view matches, and manage your recovery history.
-        </p>
-      </section>
+    <>
+      <style>{`
+        @keyframes riseIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .anim-rise { animation: riseIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+      `}</style>
 
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-white shadow-2xl shadow-slate-950/30">
-        <h3 className="text-2xl font-semibold">Student Registration</h3>
-        <p className="mt-2 text-sm text-slate-300">Only student accounts are created from this form.</p>
-
-        {errors.form ? <p className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{errors.form}</p> : null}
-
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          <label className="block space-y-2">
-            <span className="text-sm text-slate-300">Full Name</span>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300"
-              placeholder="Your full name"
-            />
-            {errors.name ? <span className="text-sm text-rose-300">{errors.name}</span> : null}
-          </label>
-
-          <label className="block space-y-2">
-            <span className="text-sm text-slate-300">Email</span>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300"
-              placeholder="student@college.edu"
-            />
-            {errors.email ? <span className="text-sm text-rose-300">{errors.email}</span> : null}
-          </label>
-
-          <label className="block space-y-2">
-            <span className="text-sm text-slate-300">Password</span>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300"
-              placeholder="Create a strong password"
-            />
-            {errors.password ? <span className="text-sm text-rose-300">{errors.password}</span> : null}
-          </label>
-
-          <label className="block space-y-2">
-            <span className="text-sm text-slate-300">Confirm Password</span>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300"
-              placeholder="Repeat your password"
-            />
-            {errors.confirmPassword ? <span className="text-sm text-rose-300">{errors.confirmPassword}</span> : null}
-          </label>
-
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-sm text-slate-400">Already have an account?</span>
-            <Link to="/login" className="text-sm text-amber-200 hover:text-amber-100">
-              Sign in
-            </Link>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-2xl bg-amber-400 px-4 py-3 font-medium text-slate-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-70"
+      <div className="mx-auto flex max-w-4xl flex-col items-center justify-center min-h-[calc(100vh-200px)]">
+        {/* ─── HEADER ─── */}
+        <div className="text-center mb-8 anim-rise" style={{ animationDelay: '0.05s' }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-400">
+            Join Lagronite
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-white md:text-4xl lg:text-5xl">
+            Create your student account in minutes.
+          </h1>
+          <p className="mt-2 max-w-lg mx-auto text-sm leading-6 text-slate-400">
+            Register to submit lost item reports, view matches, and manage your recovery history.
+          </p>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 mt-3 text-sm text-slate-500 transition hover:text-emerald-300"
           >
-            {isSubmitting ? 'Creating account...' : 'Register'}
-          </button>
-        </form>
+            <MdArrowBack className="text-base" />
+            Back to home
+          </Link>
+        </div>
+
+        {/* ─── REGISTER CARD ─── */}
+        <div className="w-full max-w-lg anim-rise" style={{ animationDelay: '0.15s' }}>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl shadow-[0_20px_60px_-30px_rgba(0,0,0,0.8)] md:p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Register</h3>
+              <Link
+                to="/login"
+                className="text-sm font-medium text-emerald-400 transition hover:text-emerald-300"
+              >
+                Sign in →
+              </Link>
+            </div>
+
+            {errors.form && (
+              <div className="mb-4 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-200">
+                {errors.form}
+              </div>
+            )}
+
+            <form className="space-y-3.5" onSubmit={handleSubmit}>
+              <div className="relative">
+                <MdPerson className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Full name"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900/60 pl-10 pr-4 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/50"
+                />
+                {errors.name && <p className="mt-1 text-xs text-rose-300">{errors.name}</p>}
+              </div>
+
+              <div className="relative">
+                <MdEmail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="student@college.edu"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900/60 pl-10 pr-4 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/50"
+                />
+                {errors.email && <p className="mt-1 text-xs text-rose-300">{errors.email}</p>}
+              </div>
+
+              <div className="relative">
+                <MdLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Password (min 8 chars)"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900/60 pl-10 pr-4 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/50"
+                />
+                {errors.password && <p className="mt-1 text-xs text-rose-300">{errors.password}</p>}
+              </div>
+
+              <div className="relative">
+                <MdLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Confirm password"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900/60 pl-10 pr-4 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/50"
+                />
+                {errors.confirmPassword && (
+                  <p className="mt-1 text-xs text-rose-300">{errors.confirmPassword}</p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <MdPersonAdd className="text-lg" />
+                {isSubmitting ? 'Creating account...' : 'Create account'}
+              </button>
+
+              <p className="text-center text-xs text-slate-500 mt-2">
+                By creating an account, you agree to our{' '}
+                <Link to="/terms" className="text-emerald-400 hover:text-emerald-300 transition">
+                  Terms of Service
+                </Link>
+              </p>
+            </form>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

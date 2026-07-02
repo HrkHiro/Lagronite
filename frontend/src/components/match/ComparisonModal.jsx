@@ -1,38 +1,41 @@
-function BreakdownBar({ label, value, weight }) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3 text-sm text-slate-300">
-        <span>{label}</span>
-        <span>{value}/{weight}</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-white/10">
-        <div className="h-full rounded-full bg-emerald-400" style={{ width: `${(value / weight) * 100}%` }} />
-      </div>
-    </div>
-  )
-}
-
 export function ComparisonModal({ suggestion, onClose, onClaim }) {
   const { lostItem, foundItem, breakdown, score } = suggestion
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-6 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950 p-6 text-white shadow-2xl shadow-black/40 md:p-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 px-4 py-6 backdrop-blur-xl">
+      <div className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-6 text-white shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)] backdrop-blur-xl md:p-8">
+        {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-emerald-400">Compare Match</p>
-            <h3 className="mt-2 text-2xl font-semibold">{Math.round(score)}% Match Score</h3>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-300">
+              Compare Match
+            </p>
+            <h3 className="mt-2 text-2xl font-bold text-white">
+              {Math.round(score)}% Match Score
+            </h3>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/10">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.08]"
+          >
             Close
           </button>
         </div>
 
+        {/* Side‑by‑side items */}
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5">
-            <p className="text-sm uppercase tracking-[0.18em] text-rose-300">Lost Item</p>
-            <h4 className="mt-2 text-2xl font-semibold">{lostItem.itemName}</h4>
-            <img src={lostItem.image} alt={lostItem.itemName} className="mt-4 h-72 w-full rounded-3xl object-cover" />
+          {/* Lost Item */}
+          <section className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+            <p className="text-xs uppercase tracking-[0.18em] text-rose-300">Lost Item</p>
+            <h4 className="mt-2 text-2xl font-semibold text-white">{lostItem.itemName}</h4>
+            {lostItem.image && (
+              <img
+                src={lostItem.image}
+                alt={lostItem.itemName}
+                className="mt-4 h-72 w-full rounded-3xl object-cover"
+              />
+            )}
             <div className="mt-4 space-y-2 text-sm text-slate-300">
               <p><span className="text-slate-500">Category:</span> {lostItem.category}</p>
               <p><span className="text-slate-500">Color:</span> {lostItem.color}</p>
@@ -41,10 +44,17 @@ export function ComparisonModal({ suggestion, onClose, onClaim }) {
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5">
-            <p className="text-sm uppercase tracking-[0.18em] text-sky-300">Found Item</p>
-            <h4 className="mt-2 text-2xl font-semibold">{foundItem.itemName}</h4>
-            <img src={foundItem.image} alt={foundItem.itemName} className="mt-4 h-72 w-full rounded-3xl object-cover" />
+          {/* Found Item */}
+          <section className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+            <p className="text-xs uppercase tracking-[0.18em] text-sky-300">Found Item</p>
+            <h4 className="mt-2 text-2xl font-semibold text-white">{foundItem.itemName}</h4>
+            {foundItem.image && (
+              <img
+                src={foundItem.image}
+                alt={foundItem.itemName}
+                className="mt-4 h-72 w-full rounded-3xl object-cover"
+              />
+            )}
             <div className="mt-4 space-y-2 text-sm text-slate-300">
               <p><span className="text-slate-500">Category:</span> {foundItem.category}</p>
               <p><span className="text-slate-500">Color:</span> {foundItem.color}</p>
@@ -54,7 +64,8 @@ export function ComparisonModal({ suggestion, onClose, onClaim }) {
           </section>
         </div>
 
-        <section className="mt-6 rounded-[1.75rem] border border-white/10 bg-white/5 p-5">
+        {/* Breakdown & action */}
+        <section className="mt-6 rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
           <h4 className="text-lg font-semibold text-white">Match Breakdown</h4>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <BreakdownBar label="Category Match" value={breakdown.categoryScore} weight={30} />
@@ -66,11 +77,32 @@ export function ComparisonModal({ suggestion, onClose, onClaim }) {
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-300">
             <p>Ready to submit a claim request for this match.</p>
-            <button type="button" onClick={() => onClaim(suggestion)} className="rounded-full bg-emerald-500 px-5 py-2.5 font-medium text-slate-950 hover:bg-emerald-400">
+            <button
+              type="button"
+              onClick={() => onClaim(suggestion)}
+              className="rounded-full bg-amber-400 px-5 py-2.5 font-medium text-slate-950 transition hover:bg-amber-300"
+            >
               Submit Claim Request
             </button>
           </div>
         </section>
+      </div>
+    </div>
+  )
+}
+
+function BreakdownBar({ label, value, weight }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3 text-sm text-slate-300">
+        <span>{label}</span>
+        <span>{value}/{weight}</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+        <div
+          className="h-full rounded-full bg-amber-400"
+          style={{ width: `${(value / weight) * 100}%` }}
+        />
       </div>
     </div>
   )

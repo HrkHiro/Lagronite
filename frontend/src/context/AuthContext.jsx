@@ -26,6 +26,7 @@ export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState(() => ({ user: readStoredAuth(), rememberMe: true }))
   const { user, rememberMe } = authState
 
+  // Sync auth state to storage – include rememberMe in dependencies
   useEffect(() => {
     if (typeof window === 'undefined') {
       return
@@ -42,8 +43,9 @@ export function AuthProvider({ children }) {
 
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
     window.sessionStorage.removeItem(AUTH_STORAGE_KEY)
-  }, [user])
+  }, [user, rememberMe])
 
+  // Listen for auth‑invalid events
   useEffect(() => {
     if (typeof window === 'undefined') {
       return undefined
@@ -80,6 +82,8 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// Disable Fast Refresh rule for this file because it's a context + hook pattern
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuthContext() {
   const context = useContext(AuthContext)
 

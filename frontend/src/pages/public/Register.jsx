@@ -243,7 +243,7 @@ export function Register({ isDark: propIsDark }) {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="student@college.edu"
+                    placeholder="lagro@high.school"
                     className={`w-full rounded-xl border pl-12 pr-4 py-4 text-base outline-none transition-all duration-200 placeholder:text-base ${
                       isDark
                         ? 'border-white/10 bg-slate-900/60 text-white placeholder:text-slate-500 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50'

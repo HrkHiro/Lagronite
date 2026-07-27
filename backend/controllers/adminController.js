@@ -1,11 +1,15 @@
-const LostItem = require('../models/LostItem')
-const FoundItem = require('../models/FoundItem')
+const prisma = require('../utils/prisma')
+const { mapLostItem, mapFoundItem } = require('../utils/itemMapper')
 
 exports.getAdminDashboard = async (req, res) => {
   try {
     const [lostItems, foundItems] = await Promise.all([
-      LostItem.find().lean(),
-      FoundItem.find().lean(),
+      prisma.lostItem.findMany({
+        include: { owner: true },
+      }),
+      prisma.foundItem.findMany({
+        include: { finder: true },
+      }),
     ])
 
     const allItems = [...lostItems, ...foundItems]

@@ -1,24 +1,26 @@
-const User = require('../models/User')
+const prisma = require('../utils/prisma')
+const { serializeUser } = require('../utils/serializers')
 
 // GET ALL STUDENTS
 exports.getUsers = async (req, res) => {
   try {
-    await User.updateMany(
-      {
+    await prisma.user.updateMany({
+      where: {
         status: 'suspended',
-        suspendedUntil: { $lte: new Date() },
+        suspendedUntil: { lte: new Date() },
       },
-      {
+      data: {
         status: 'active',
         suspendedUntil: null,
-      }
-    );
+      },
+    });
 
-    const users = await User.find({ role: 'student' })
-      .select('-password')
-      .sort({ createdAt: -1 });
+    const users = await prisma.user.findMany({
+      where: { role: 'student' },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    res.json({ users });
+    res.json({ users: users.map(serializeUser) });
   } catch (err) {
     res.status(500).json({
       message: 'Failed to load users',
@@ -33,16 +35,15 @@ exports.suspendUser = async (req, res) => {
     const { userId } = req.params
     const { until } = req.body // ISO date
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
         status: 'suspended',
-        suspendedUntil: until,
+        suspendedUntil: until ? new Date(until) : null,
       },
-      { new: true }
-    ).select('-password')
+    })
 
-    res.json({ message: 'User suspended', user })
+    res.json({ message: 'User suspended', user: serializeUser(user) })
   } catch (err) {
     res.status(500).json({
       message: 'Failed to suspend user',
@@ -56,13 +57,12 @@ exports.banUser = async (req, res) => {
   try {
     const { userId } = req.params
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { status: 'banned' },
-      { new: true }
-    ).select('-password')
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { status: 'banned' },
+    })
 
-    res.json({ message: 'User banned', user })
+    res.json({ message: 'User banned', user: serializeUser(user) })
   } catch (err) {
     res.status(500).json({
       message: 'Failed to ban user',
@@ -76,16 +76,15 @@ exports.activateUser = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
         status: 'active',
         suspendedUntil: null,
       },
-      { new: true }
-    ).select('-password');
+    });
 
-    res.json({ message: 'User activated', user });
+    res.json({ message: 'User activated', user: serializeUser(user) });
   } catch (err) {
     res.status(500).json({
       message: 'Failed to activate user',
@@ -99,7 +98,7 @@ exports.deleteUser = async (req, res) => {
   try {
     const { userId } = req.params
 
-    await User.findByIdAndDelete(userId)
+    await prisma.user.delete({ where: { id: userId } })
 
     res.json({ message: 'User deleted' })
   } catch (err) {

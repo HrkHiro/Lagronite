@@ -1,25 +1,28 @@
-const LostItem = require('../models/LostItem');
+const prisma = require('../utils/prisma');
+const { serializeLostItem } = require('../utils/serializers');
 const { uploadItemImage } = require('../utils/cloudinary');
 
 exports.createLostItem = async (req, res) => {
   try {
     const imageUrl = await uploadItemImage(req.body.image);
 
-    const lostItem = await LostItem.create({
-      itemName: req.body.itemName.trim(),
-      category: req.body.category,
-      color: req.body.color,
-      description: req.body.description.trim(),
-      dateLost: req.body.dateLost,
-      locationLost: req.body.locationLost.trim(),
-      image: imageUrl,
-      ownerId: req.user._id,
-      status: 'Lost',
+    const lostItem = await prisma.lostItem.create({
+      data: {
+        itemName: req.body.itemName.trim(),
+        category: req.body.category,
+        color: req.body.color,
+        description: req.body.description.trim(),
+        dateLost: new Date(req.body.dateLost),
+        locationLost: req.body.locationLost.trim(),
+        image: imageUrl,
+        ownerId: req.user.id || req.user._id,
+        status: 'Lost',
+      },
     });
 
     return res.status(201).json({
       message: 'Lost item reported successfully',
-      lostItem,
+      lostItem: serializeLostItem(lostItem),
     });
   } catch (error) {
     return res.status(500).json({

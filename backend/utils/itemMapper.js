@@ -1,8 +1,26 @@
-function mapLostItem(item) {
-  const poster = item.ownerId;
+function normalizeUser(user) {
+  if (!user) {
+    return null;
+  }
+
+  const id = user.id || user._id;
 
   return {
-    id: item._id,
+    id,
+    _id: id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    profileImage: user.profileImage || null,
+  };
+}
+
+function mapLostItem(item) {
+  const poster = normalizeUser(item.owner || item.ownerId);
+
+  return {
+    id: item.id || item._id,
+    _id: item.id || item._id,
     reportType: 'lost',
     itemName: item.itemName,
     category: item.category,
@@ -14,22 +32,18 @@ function mapLostItem(item) {
     status: item.status,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
-    postedBy: poster
-      ? {
-          id: poster._id,
-          name: poster.name,
-          role: poster.role,
-        }
-      : null,
+    postedBy: poster,
+    reporter: poster,
     postedByAdmin: poster?.role === 'admin',
   };
 }
 
 function mapFoundItem(item) {
-  const poster = item.finderId;
+  const poster = normalizeUser(item.finder || item.finderId);
 
   return {
-    id: item._id,
+    id: item.id || item._id,
+    _id: item.id || item._id,
     reportType: 'found',
     itemName: item.itemName,
     category: item.category,
@@ -41,13 +55,8 @@ function mapFoundItem(item) {
     status: item.status,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
-    postedBy: poster
-      ? {
-          id: poster._id,
-          name: poster.name,
-          role: poster.role,
-        }
-      : null,
+    postedBy: poster,
+    reporter: poster,
     postedByAdmin: poster?.role === 'admin',
   };
 }
@@ -94,6 +103,7 @@ function matchesDateFilter(item, dateFilter) {
 }
 
 module.exports = {
+  normalizeUser,
   mapLostItem,
   mapFoundItem,
   applyTextSearch,

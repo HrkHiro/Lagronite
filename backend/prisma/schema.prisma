@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserRole {
+  student
+  admin
+}
+
+enum UserStatus {
+  active
+  suspended
+  banned
+}
+
+enum ReportStatus {
+  Lost
+  Found
+  Claimed
+  Returned
+}
+
+enum ReportType {
+  lost
+  found
+}
+
+enum ReactionType {
+  like
+  helpful
+  interested
+}
+
+model User {
+  id             String                @id @default(cuid())
+  name           String
+  email          String                @unique
+  password       String
+  profileImage   String?
+  role           UserRole              @default(student)
+  status         UserStatus            @default(active)
+  suspendedUntil DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  lostItems      LostItem[]            @relation("LostItemOwner")
+  foundItems     FoundItem[]           @relation("FoundItemFinder")
+  comments       ItemComment[]
+  reactions      ItemReaction[]
+  sentMessages   ChatMessage[]
+  chatLinks      ReportChatParticipant[]
+}
+
+model LostItem {
+  id           String       @id @default(cuid())
+  itemName     String
+  category     String
+  color        String
+  description  String
+  dateLost     DateTime
+  locationLost String
+  image        String
+  ownerId      String
+  owner        User         @relation("LostItemOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  status       ReportStatus @default(Lost)
+  claimerName  String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model FoundItem {
+  id            String       @id @default(cuid())
+  itemName      String
+  category      String
+  color         String
+  description   String
+  dateFound     DateTime
+  locationFound String
+  image         String
+  finderId      String
+  finder        User         @relation("FoundItemFinder", fields: [finderId], references: [id], onDelete: Cascade)
+  status        ReportStatus @default(Found)
+  claimerName   String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model ItemComment {
+  id        String     @id @default(cuid())
+  itemType  ReportType
+  itemId    String
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String     @db.VarChar(500)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([itemType, itemId, createdAt])
+}
+
+model ItemReaction {
+  id          String       @id @default(cuid())
+  itemType    ReportType
+  itemId      String
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactionType ReactionType
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([itemType, itemId, userId])
+  @@index([itemType, itemId])
+}
+
+model ReportChat {
+  id           String                   @id @default(cuid())
+  reportType   ReportType
+  reportId     String
+  isClosed     Boolean                  @default(false)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  participants ReportChatParticipant[]
+  messages     ChatMessage[]
+
+  @@unique([reportType, reportId])
+  @@index([reportType, reportId])
+}
+
+model ReportChatParticipant {
+  chatId String
+  userId String
+  chat   ReportChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([chatId, userId])
+}
+
+model ChatMessage {
+  id        String     @id @default(cuid())
+  chatId    String
+  senderId  String
+  text      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  chat      ReportChat  @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender    User       @relation(fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@index([chatId, createdAt])
+}

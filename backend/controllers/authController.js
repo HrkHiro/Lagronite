@@ -1,20 +1,25 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const prisma = require('../utils/prisma');
+const { serializeUser } = require('../utils/serializers');
+const { uploadProfileImage } = require('../utils/cloudinary');
 
 function getToken(userId) {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
 }
 
 function buildUserPayload(user) {
+  const serializedUser = serializeUser(user);
+
   return {
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    profileImage: user.profileImage || null,
+    id: serializedUser.id,
+    _id: serializedUser._id,
+    name: serializedUser.name,
+    email: serializedUser.email,
+    role: serializedUser.role,
+    profileImage: serializedUser.profileImage || null,
   };
 }
 
@@ -28,7 +33,7 @@ function setAuthCookie(res, token, rememberMe) {
 }
 
 function sendAuthResponse(res, user, statusCode, rememberMe) {
-  const token = getToken(user._id);
+  const token = getToken(user.id || user._id);
 
   setAuthCookie(res, token, rememberMe);
 
@@ -42,7 +47,9 @@ function sendAuthResponse(res, user, statusCode, rememberMe) {
 exports.updateMe = async (req, res) => {
   try {
     const { name, currentPassword, newPassword, profileImage } = req.body;
-    const user = await User.findById(req.user._id).select('+password');
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id || req.user._id },
+    });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -70,15 +77,21 @@ exports.updateMe = async (req, res) => {
     }
 
     if (profileImage) {
-      const { uploadProfileImage } = require('../utils/cloudinary');
       user.profileImage = await uploadProfileImage(profileImage);
     }
 
-    await user.save();
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        name: user.name,
+        password: user.password,
+        profileImage: user.profileImage,
+      },
+    });
 
     return res.status(200).json({
       message: 'Profile updated successfully',
-      user: buildUserPayload(user),
+      user: buildUserPayload(updatedUser),
     });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to update profile', error: error.message });
@@ -102,7 +115,10 @@ exports.registerStudent = async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 8 characters' });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const normalizedEmail = email.toLowerCase();
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
 
     if (existingUser) {
       return res.status(409).json({ message: 'An account with this email already exists' });
@@ -110,18 +126,20 @@ exports.registerStudent = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role: 'student',
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email: normalizedEmail,
+        password: hashedPassword,
+        role: 'student',
+      },
     });
 
     return sendAuthResponse(res, user, 201, true);
   } catch (error) {
     if (isDatabaseAuthError(error)) {
       return res.status(503).json({
-        message: 'Database write access is not configured correctly. Update MONGOURL to a writable MongoDB Atlas connection string with valid credentials.',
+        message: 'Database write access is not configured correctly. Check DATABASE_URL and your MySQL credentials.',
         error: error.message,
       });
     }
@@ -138,7 +156,9 @@ exports.loginStudent = async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });

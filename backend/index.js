@@ -7,9 +7,9 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cookieParser = require('cookie-parser');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const prisma = require('./utils/prisma');
 const authRoutes = require('./routes/authRoutes');
 const lostItemRoutes = require('./routes/lostItemRoutes');
 const foundItemRoutes = require('./routes/foundItemRoutes');
@@ -39,8 +39,7 @@ app.use('/api/found-items', foundItemRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/feed', feedRoutes);
-app.use('/api/admin', adminRoutes)
-app.use('/api/admin', require('./routes/adminRoutes'))
+app.use('/api/admin', adminRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -60,26 +59,17 @@ app.use((error, req, res, next) => {
 
 async function startServer() {
   try {
-    const mongoUrl = process.env.MONGOURL || process.env.MONGODB_URI;
-    if (!mongoUrl) {
-      throw new Error('MONGOURL or MONGODB_URI is missing from .env');
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL is missing from .env');
     }
 
     if (!process.env.JWT_SECRET) {
       throw new Error('JWT_SECRET is missing from .env');
     }
 
-    if (!process.env.MONGOURL && process.env.MONGODB_URI) {
-      console.warn('MONGOURL is not set; using MONGODB_URI from .env instead.');
-    }
-
-    await mongoose.connect(mongoUrl, {
-      serverSelectionTimeoutMS: 10000,
-    });
-
-    await mongoose.connection.db.command({ ping: 1 });
-
-    console.log('MongoDB connected');
+    await prisma.$connect();
+    console.log('MySQL connected through Prisma');
 
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
       console.warn('Cloudinary is not configured. Image uploads will store local data URIs in development.');
@@ -111,7 +101,7 @@ async function startServer() {
 
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        socket.userId = decoded.id;
+        socket.userId = decoded.id || decoded.userId;
         socket.userRole = decoded.role;
         socket.userName = decoded.name;
         next();

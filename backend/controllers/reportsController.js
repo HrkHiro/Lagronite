@@ -1,55 +1,5 @@
-const LostItem = require('../models/LostItem');
-const FoundItem = require('../models/FoundItem');
-
-function mapLostItem(item) {
-  return {
-    id: item._id,
-    reportType: 'lost',
-    itemName: item.itemName,
-    category: item.category,
-    color: item.color,
-    description: item.description,
-    date: item.dateLost,
-    location: item.locationLost,
-    image: item.image,
-    status: item.status,
-    claimerName: item.claimerName || null,
-    reporter: item.ownerId
-      ? {
-          id: item.ownerId._id,
-          name: item.ownerId.name,
-          email: item.ownerId.email,
-        }
-      : null,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
-  };
-}
-
-function mapFoundItem(item) {
-  return {
-    id: item._id,
-    reportType: 'found',
-    itemName: item.itemName,
-    category: item.category,
-    color: item.color,
-    description: item.description,
-    date: item.dateFound,
-    location: item.locationFound,
-    image: item.image,
-    status: item.status,
-    claimerName: item.claimerName || null,
-    reporter: item.finderId
-      ? {
-          id: item.finderId._id,
-          name: item.finderId.name,
-          email: item.finderId.email,
-        }
-      : null,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
-  };
-}
+const prisma = require('../utils/prisma');
+const { mapLostItem, mapFoundItem } = require('../utils/itemMapper');
 
 function applyTextSearch(items, searchTerm) {
   if (!searchTerm) {
@@ -94,8 +44,14 @@ function matchesDateFilter(item, dateFilter) {
 exports.listAllReportsAdmin = async (req, res) => {
   try {
     const [lostItems, foundItems] = await Promise.all([
-      LostItem.find().populate('ownerId', 'name email').sort({ createdAt: -1 }),
-      FoundItem.find().populate('finderId', 'name email').sort({ createdAt: -1 }),
+      prisma.lostItem.findMany({
+        include: { owner: { select: { id: true, name: true, email: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.foundItem.findMany({
+        include: { finder: { select: { id: true, name: true, email: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
     ])
 
     const reports = [
@@ -123,8 +79,16 @@ exports.listMyReports = async (req, res) => {
     const date = req.query.date?.trim();
 
     const [lostItems, foundItems] = await Promise.all([
-      LostItem.find({ ownerId: req.user._id }).sort({ createdAt: -1 }),
-      FoundItem.find({ finderId: req.user._id }).sort({ createdAt: -1 }),
+      prisma.lostItem.findMany({
+        where: { ownerId: req.user.id || req.user._id },
+        include: { owner: { select: { id: true, name: true, email: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.foundItem.findMany({
+        where: { finderId: req.user.id || req.user._id },
+        include: { finder: { select: { id: true, name: true, email: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
     ]);
 
     const combinedReports = [...lostItems.map(mapLostItem), ...foundItems.map(mapFoundItem)].sort(
@@ -176,7 +140,10 @@ exports.getReportDetails = async (req, res) => {
     const { reportType, reportId } = req.params;
 
     if (reportType === 'lost') {
-      const report = await LostItem.findOne({ _id: reportId, ownerId: req.user._id });
+      const report = await prisma.lostItem.findFirst({
+        where: { id: reportId, ownerId: req.user.id || req.user._id },
+        include: { owner: { select: { id: true, name: true, email: true, role: true } } },
+      });
 
       if (!report) {
         return res.status(404).json({ message: 'Lost report not found' });
@@ -186,7 +153,10 @@ exports.getReportDetails = async (req, res) => {
     }
 
     if (reportType === 'found') {
-      const report = await FoundItem.findOne({ _id: reportId, finderId: req.user._id });
+      const report = await prisma.foundItem.findFirst({
+        where: { id: reportId, finderId: req.user.id || req.user._id },
+        include: { finder: { select: { id: true, name: true, email: true, role: true } } },
+      });
 
       if (!report) {
         return res.status(404).json({ message: 'Found report not found' });
@@ -218,14 +188,14 @@ function pickUpdateFields(reportType, body) {
   if (reportType === 'lost') {
     return {
       ...commonFields,
-      dateLost: body.date,
+      dateLost: body.date ? new Date(body.date) : undefined,
       locationLost: body.location,
     };
   }
 
   return {
     ...commonFields,
-    dateFound: body.date,
+    dateFound: body.date ? new Date(body.date) : undefined,
     locationFound: body.location,
   };
 }
@@ -236,15 +206,20 @@ exports.updateReport = async (req, res) => {
     const updateFields = pickUpdateFields(reportType, req.body);
 
     if (reportType === 'lost') {
-      const updatedReport = await LostItem.findOneAndUpdate(
-        { _id: reportId, ownerId: req.user._id },
-        updateFields,
-        { new: true, runValidators: true },
-      );
+      const report = await prisma.lostItem.findFirst({
+        where: { id: reportId, ownerId: req.user.id || req.user._id },
+        include: { owner: { select: { id: true, name: true, email: true, role: true } } },
+      });
 
-      if (!updatedReport) {
+      if (!report) {
         return res.status(404).json({ message: 'Lost report not found' });
       }
+
+      const updatedReport = await prisma.lostItem.update({
+        where: { id: report.id },
+        data: updateFields,
+        include: { owner: { select: { id: true, name: true, email: true, role: true } } },
+      });
 
       return res.status(200).json({
         message: 'Lost report updated successfully',
@@ -253,15 +228,20 @@ exports.updateReport = async (req, res) => {
     }
 
     if (reportType === 'found') {
-      const updatedReport = await FoundItem.findOneAndUpdate(
-        { _id: reportId, finderId: req.user._id },
-        updateFields,
-        { new: true, runValidators: true },
-      );
+      const report = await prisma.foundItem.findFirst({
+        where: { id: reportId, finderId: req.user.id || req.user._id },
+        include: { finder: { select: { id: true, name: true, email: true, role: true } } },
+      });
 
-      if (!updatedReport) {
+      if (!report) {
         return res.status(404).json({ message: 'Found report not found' });
       }
+
+      const updatedReport = await prisma.foundItem.update({
+        where: { id: report.id },
+        data: updateFields,
+        include: { finder: { select: { id: true, name: true, email: true, role: true } } },
+      });
 
       return res.status(200).json({
         message: 'Found report updated successfully',
@@ -284,15 +264,20 @@ exports.updateReportAdmin = async (req, res) => {
     const updateFields = pickUpdateFields(reportType, req.body);
 
     if (reportType === 'lost') {
-      const updatedReport = await LostItem.findByIdAndUpdate(
-        reportId,
-        updateFields,
-        { new: true, runValidators: true },
-      );
+      const report = await prisma.lostItem.findUnique({
+        where: { id: reportId },
+        include: { owner: { select: { id: true, name: true, email: true, role: true } } },
+      });
 
-      if (!updatedReport) {
+      if (!report) {
         return res.status(404).json({ message: 'Lost report not found' });
       }
+
+      const updatedReport = await prisma.lostItem.update({
+        where: { id: reportId },
+        data: updateFields,
+        include: { owner: { select: { id: true, name: true, email: true, role: true } } },
+      });
 
       return res.status(200).json({
         message: 'Lost report updated successfully',
@@ -301,15 +286,20 @@ exports.updateReportAdmin = async (req, res) => {
     }
 
     if (reportType === 'found') {
-      const updatedReport = await FoundItem.findByIdAndUpdate(
-        reportId,
-        updateFields,
-        { new: true, runValidators: true },
-      );
+      const report = await prisma.foundItem.findUnique({
+        where: { id: reportId },
+        include: { finder: { select: { id: true, name: true, email: true, role: true } } },
+      });
 
-      if (!updatedReport) {
+      if (!report) {
         return res.status(404).json({ message: 'Found report not found' });
       }
+
+      const updatedReport = await prisma.foundItem.update({
+        where: { id: reportId },
+        data: updateFields,
+        include: { finder: { select: { id: true, name: true, email: true, role: true } } },
+      });
 
       return res.status(200).json({
         message: 'Found report updated successfully',
@@ -331,21 +321,29 @@ exports.deleteReport = async (req, res) => {
     const { reportType, reportId } = req.params;
 
     if (reportType === 'lost') {
-      const deletedReport = await LostItem.findOneAndDelete({ _id: reportId, ownerId: req.user._id });
+      const deletedReport = await prisma.lostItem.findFirst({
+        where: { id: reportId, ownerId: req.user.id || req.user._id },
+      });
 
       if (!deletedReport) {
         return res.status(404).json({ message: 'Lost report not found' });
       }
 
+      await prisma.lostItem.delete({ where: { id: deletedReport.id } });
+
       return res.status(200).json({ message: 'Lost report deleted successfully' });
     }
 
     if (reportType === 'found') {
-      const deletedReport = await FoundItem.findOneAndDelete({ _id: reportId, finderId: req.user._id });
+      const deletedReport = await prisma.foundItem.findFirst({
+        where: { id: reportId, finderId: req.user.id || req.user._id },
+      });
 
       if (!deletedReport) {
         return res.status(404).json({ message: 'Found report not found' });
       }
+
+      await prisma.foundItem.delete({ where: { id: deletedReport.id } });
 
       return res.status(200).json({ message: 'Found report deleted successfully' });
     }
@@ -364,21 +362,25 @@ exports.deleteReportAdmin = async (req, res) => {
     const { reportType, reportId } = req.params;
 
     if (reportType === 'lost') {
-      const deletedReport = await LostItem.findByIdAndDelete(reportId);
+      const report = await prisma.lostItem.findUnique({ where: { id: reportId } });
 
-      if (!deletedReport) {
+      if (!report) {
         return res.status(404).json({ message: 'Lost report not found' });
       }
+
+      await prisma.lostItem.delete({ where: { id: reportId } });
 
       return res.status(200).json({ message: 'Lost report deleted successfully' });
     }
 
     if (reportType === 'found') {
-      const deletedReport = await FoundItem.findByIdAndDelete(reportId);
+      const report = await prisma.foundItem.findUnique({ where: { id: reportId } });
 
-      if (!deletedReport) {
+      if (!report) {
         return res.status(404).json({ message: 'Found report not found' });
       }
+
+      await prisma.foundItem.delete({ where: { id: reportId } });
 
       return res.status(200).json({ message: 'Found report deleted successfully' });
     }

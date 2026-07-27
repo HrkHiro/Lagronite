@@ -1,23 +1,27 @@
-const LostItem = require('../models/LostItem');
-const FoundItem = require('../models/FoundItem');
-const ItemComment = require('../models/ItemComment');
-const ItemReaction = require('../models/ItemReaction');
+const prisma = require('../utils/prisma');
 const {
   mapLostItem,
   mapFoundItem,
   applyTextSearch,
   matchesDateFilter,
 } = require('../utils/itemMapper');
+const { serializeComment } = require('../utils/serializers');
 
 const REACTION_TYPES = ['like', 'helpful', 'interested'];
 
 async function findItemByType(reportType, reportId) {
   if (reportType === 'lost') {
-    return LostItem.findById(reportId).populate('ownerId', 'name role');
+    return prisma.lostItem.findUnique({
+      where: { id: reportId },
+      include: { owner: { select: { id: true, name: true, role: true, email: true } } },
+    });
   }
 
   if (reportType === 'found') {
-    return FoundItem.findById(reportId).populate('finderId', 'name role');
+    return prisma.foundItem.findUnique({
+      where: { id: reportId },
+      include: { finder: { select: { id: true, name: true, role: true, email: true } } },
+    });
   }
 
   return null;
@@ -33,8 +37,14 @@ function mapItemByType(reportType, item) {
 
 async function fetchCampusItems() {
   const [lostItems, foundItems] = await Promise.all([
-    LostItem.find().populate('ownerId', 'name role').sort({ createdAt: -1 }),
-    FoundItem.find().populate('finderId', 'name role').sort({ createdAt: -1 }),
+    prisma.lostItem.findMany({
+      include: { owner: { select: { id: true, name: true, role: true, email: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.foundItem.findMany({
+      include: { finder: { select: { id: true, name: true, role: true, email: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
   ]);
 
   return [...lostItems.map(mapLostItem), ...foundItems.map(mapFoundItem)].sort(
@@ -53,34 +63,26 @@ async function getSocialStatsForItems(items, userId) {
   }));
 
   const [commentCounts, reactions] = await Promise.all([
-    ItemComment.aggregate([
-      {
-        $match: {
-          $or: itemKeys.map((key) => ({
-            itemType: key.itemType,
-            itemId: key.itemId,
-          })),
-        },
+    prisma.itemComment.groupBy({
+      by: ['itemType', 'itemId'],
+      where: { OR: itemKeys },
+      _count: { _all: true },
+    }),
+    prisma.itemReaction.findMany({
+      where: { OR: itemKeys },
+      select: {
+        itemType: true,
+        itemId: true,
+        userId: true,
+        reactionType: true,
       },
-      {
-        $group: {
-          _id: { itemType: '$itemType', itemId: '$itemId' },
-          count: { $sum: 1 },
-        },
-      },
-    ]),
-    ItemReaction.find({
-      $or: itemKeys.map((key) => ({
-        itemType: key.itemType,
-        itemId: key.itemId,
-      })),
     }),
   ]);
 
   const commentCountMap = new Map(
     commentCounts.map((entry) => [
-      `${entry._id.itemType}:${String(entry._id.itemId)}`,
-      entry.count,
+      `${entry.itemType}:${String(entry.itemId)}`,
+      entry._count._all,
     ]),
   );
 
@@ -168,7 +170,7 @@ exports.listFeed = async (req, res) => {
 
     const campusItems = await fetchCampusItems();
     const filteredItems = filterItems(campusItems, req.query);
-    const enrichedItems = await getSocialStatsForItems(filteredItems, req.user._id);
+    const enrichedItems = await getSocialStatsForItems(filteredItems, req.user.id || req.user._id);
 
     const totalItems = enrichedItems.length;
     const totalPages = Math.max(Math.ceil(totalItems / limit), 1);
@@ -214,10 +216,14 @@ exports.getFeedItem = async (req, res) => {
 
     const item = mapItemByType(reportType, itemDocument);
     const [comments, reactions] = await Promise.all([
-      ItemComment.find({ itemType: reportType, itemId: reportId })
-        .populate('userId', 'name role')
-        .sort({ createdAt: -1 }),
-      ItemReaction.find({ itemType: reportType, itemId: reportId }),
+      prisma.itemComment.findMany({
+        where: { itemType: reportType, itemId: reportId },
+        include: { user: { select: { id: true, name: true, role: true, email: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.itemReaction.findMany({
+        where: { itemType: reportType, itemId: reportId },
+      }),
     ]);
 
     const reactionSummary = { like: 0, helpful: 0, interested: 0, total: 0 };
@@ -227,7 +233,7 @@ exports.getFeedItem = async (req, res) => {
       reactionSummary[reaction.reactionType] += 1;
       reactionSummary.total += 1;
 
-      if (String(reaction.userId) === String(req.user._id)) {
+      if (String(reaction.userId) === String(req.user.id || req.user._id)) {
         userReaction = reaction.reactionType;
       }
     });
@@ -239,18 +245,7 @@ exports.getFeedItem = async (req, res) => {
         reactions: reactionSummary,
         userReaction,
       },
-      comments: comments.map((comment) => ({
-        id: comment._id,
-        content: comment.content,
-        createdAt: comment.createdAt,
-        author: comment.userId
-          ? {
-              id: comment.userId._id,
-              name: comment.userId.name,
-              role: comment.userId.role,
-            }
-          : null,
-      })),
+      comments: comments.map(serializeComment),
     });
   } catch (error) {
     return res.status(500).json({
@@ -275,27 +270,19 @@ exports.addComment = async (req, res) => {
       return res.status(404).json({ message: 'Item not found' });
     }
 
-    const comment = await ItemComment.create({
-      itemType: reportType,
-      itemId: reportId,
-      userId: req.user._id,
-      content,
+    const comment = await prisma.itemComment.create({
+      data: {
+        itemType: reportType,
+        itemId: reportId,
+        userId: req.user.id || req.user._id,
+        content,
+      },
+      include: { user: { select: { id: true, name: true, role: true, email: true } } },
     });
-
-    await comment.populate('userId', 'name role');
 
     return res.status(201).json({
       message: 'Comment added successfully',
-      comment: {
-        id: comment._id,
-        content: comment.content,
-        createdAt: comment.createdAt,
-        author: {
-          id: comment.userId._id,
-          name: comment.userId.name,
-          role: comment.userId.role,
-        },
-      },
+      comment: serializeComment(comment),
     });
   } catch (error) {
     return res.status(500).json({
@@ -320,14 +307,17 @@ exports.toggleReaction = async (req, res) => {
       return res.status(404).json({ message: 'Item not found' });
     }
 
-    const existingReaction = await ItemReaction.findOne({
-      itemType: reportType,
-      itemId: reportId,
-      userId: req.user._id,
+    const userId = req.user.id || req.user._id;
+    const existingReaction = await prisma.itemReaction.findFirst({
+      where: {
+        itemType: reportType,
+        itemId: reportId,
+        userId,
+      },
     });
 
     if (existingReaction?.reactionType === reactionType) {
-      await existingReaction.deleteOne();
+      await prisma.itemReaction.delete({ where: { id: existingReaction.id } });
 
       return res.status(200).json({
         message: 'Reaction removed',
@@ -336,8 +326,10 @@ exports.toggleReaction = async (req, res) => {
     }
 
     if (existingReaction) {
-      existingReaction.reactionType = reactionType;
-      await existingReaction.save();
+      await prisma.itemReaction.update({
+        where: { id: existingReaction.id },
+        data: { reactionType },
+      });
 
       return res.status(200).json({
         message: 'Reaction updated',
@@ -345,11 +337,13 @@ exports.toggleReaction = async (req, res) => {
       });
     }
 
-    await ItemReaction.create({
-      itemType: reportType,
-      itemId: reportId,
-      userId: req.user._id,
-      reactionType,
+    await prisma.itemReaction.create({
+      data: {
+        itemType: reportType,
+        itemId: reportId,
+        userId,
+        reactionType,
+      },
     });
 
     return res.status(201).json({

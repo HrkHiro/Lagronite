@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const prisma = require('../utils/prisma');
+const { serializeUser } = require('../utils/serializers');
 
 function clearAuthCookie(res) {
   res.clearCookie('auth_token', {
@@ -11,7 +12,17 @@ function clearAuthCookie(res) {
 
 async function getTokenUser(token) {
   const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  return User.findById(decoded.userId);
+  const userId = decoded.id || decoded.userId;
+
+  if (!userId) {
+    return null;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  return serializeUser(user);
 }
 
 exports.protect = async (req, res, next) => {

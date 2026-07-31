@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useOutletContext } from 'react-router-dom'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { MdEmail, MdLock, MdLogin, MdArrowBack, MdVisibility, MdVisibilityOff } from 'react-icons/md'
 import { useAuth } from '../../hooks/useAuth.js'
@@ -10,14 +11,16 @@ export function Login({ isDark: propIsDark }) {
   const { isAuthenticated, role, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const outlet = useOutletContext()
+  const contextIsDark = outlet?.isDark
 
   const [loginData, setLoginData] = useState({ email: '', password: '', rememberMe: false })
   const [errors, setErrors] = useState(initialErrors)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
-  // Check if dark mode class exists on HTML element
-  const isDark = propIsDark !== undefined ? propIsDark : document.documentElement.classList.contains('dark')
+  // Obtain dark mode from Outlet context when available, otherwise fallback
+  const isDark = contextIsDark !== undefined ? contextIsDark : (propIsDark !== undefined ? propIsDark : document.documentElement.classList.contains('dark'))
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -266,7 +269,19 @@ export function Login({ isDark: propIsDark }) {
               </button>
             </form>
 
-            {/* Additional Links */}
+            <div className={`mt-4 rounded-2xl border p-4 text-sm ${isDark ? 'border-slate-700 bg-slate-900/60 text-slate-200' : 'border-emerald-200 bg-emerald-50/60 text-slate-700'}`}>
+              <p className="text-center">
+                By signing in, you acknowledge the{' '}
+                <Link to="/terms" className="text-emerald-500 hover:text-emerald-400 font-medium">
+                  Lost and Found User Agreement
+                </Link>{' '}
+                and{' '}
+                <Link to="/privacy" className="text-emerald-500 hover:text-emerald-400 font-medium">
+                  Privacy Policy
+                </Link>.
+              </p>
+            </div>
+
             <div className={`mt-6 text-center text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
               Don't have an account?{' '}
               <Link to="/register" className="font-medium text-emerald-500 hover:text-emerald-400 transition-colors">

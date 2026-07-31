@@ -41,6 +41,14 @@ function matchesDateFilter(item, dateFilter) {
   return normalizedItemDate === dateFilter;
 }
 
+function buildAdminReportList(items, statusFilter) {
+  const reports = items
+    .filter((item) => (statusFilter ? item.status === statusFilter : item.status !== 'Claimed'))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+
+  return reports
+}
+
 exports.listAllReportsAdmin = async (req, res) => {
   try {
     const [lostItems, foundItems] = await Promise.all([
@@ -54,15 +62,44 @@ exports.listAllReportsAdmin = async (req, res) => {
       }),
     ])
 
-    const reports = [
+    const reports = buildAdminReportList([
       ...lostItems.map(mapLostItem),
       ...foundItems.map(mapFoundItem),
-    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    ])
 
     return res.status(200).json({ reports })
   } catch (error) {
     return res.status(500).json({
       message: 'Failed to fetch admin reports',
+      error: error.message,
+    })
+  }
+}
+
+exports.listClaimedReportsAdmin = async (req, res) => {
+  try {
+    const [lostItems, foundItems] = await Promise.all([
+      prisma.lostItem.findMany({
+        where: { status: 'Claimed' },
+        include: { owner: { select: { id: true, name: true, email: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.foundItem.findMany({
+        where: { status: 'Claimed' },
+        include: { finder: { select: { id: true, name: true, email: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ])
+
+    const reports = buildAdminReportList([
+      ...lostItems.map(mapLostItem),
+      ...foundItems.map(mapFoundItem),
+    ], 'Claimed')
+
+    return res.status(200).json({ reports })
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Failed to fetch claimed reports',
       error: error.message,
     })
   }
@@ -362,27 +399,71 @@ exports.deleteReportAdmin = async (req, res) => {
     const { reportType, reportId } = req.params;
 
     if (reportType === 'lost') {
-      const report = await prisma.lostItem.findUnique({ where: { id: reportId } });
+      const report = await prisma.lostItem.findUnique({
+        where: { id: reportId },
+        include: { owner: { select: { id: true, name: true, email: true, role: true } } },
+      });
 
       if (!report) {
         return res.status(404).json({ message: 'Lost report not found' });
       }
 
+      await prisma.archiveRecord.create({
+        data: {
+          entityType: 'lost',
+          itemName: report.itemName,
+          category: report.category,
+          color: report.color,
+          description: report.description,
+          date: report.dateLost,
+          location: report.locationLost,
+          image: report.image,
+          status: report.status,
+          reporterName: report.owner?.name || 'Unknown',
+          reporterEmail: report.owner?.email || 'N/A',
+          claimerName: report.claimerName || null,
+          reason: 'Admin deleted report from live reports / claimed records',
+          deletedBy: req.user?.id || req.user?._id || 'admin',
+        },
+      });
+
       await prisma.lostItem.delete({ where: { id: reportId } });
 
-      return res.status(200).json({ message: 'Lost report deleted successfully' });
+      return res.status(200).json({ message: 'Lost report archived successfully' });
     }
 
     if (reportType === 'found') {
-      const report = await prisma.foundItem.findUnique({ where: { id: reportId } });
+      const report = await prisma.foundItem.findUnique({
+        where: { id: reportId },
+        include: { finder: { select: { id: true, name: true, email: true, role: true } } },
+      });
 
       if (!report) {
         return res.status(404).json({ message: 'Found report not found' });
       }
 
+      await prisma.archiveRecord.create({
+        data: {
+          entityType: 'found',
+          itemName: report.itemName,
+          category: report.category,
+          color: report.color,
+          description: report.description,
+          date: report.dateFound,
+          location: report.locationFound,
+          image: report.image,
+          status: report.status,
+          reporterName: report.finder?.name || 'Unknown',
+          reporterEmail: report.finder?.email || 'N/A',
+          claimerName: report.claimerName || null,
+          reason: 'Admin deleted report from live reports / claimed records',
+          deletedBy: req.user?.id || req.user?._id || 'admin',
+        },
+      });
+
       await prisma.foundItem.delete({ where: { id: reportId } });
 
-      return res.status(200).json({ message: 'Found report deleted successfully' });
+      return res.status(200).json({ message: 'Found report archived successfully' });
     }
 
     return res.status(400).json({ message: 'Invalid report type' });

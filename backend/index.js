@@ -17,6 +17,7 @@ const reportsRoutes = require('./routes/reportsRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const feedRoutes = require('./routes/feedRoutes');
 const adminRoutes = require('./routes/adminRoutes')
+const queryRoutes = require('./routes/queryRoutes')
 
 
 const app = express();
@@ -33,12 +34,16 @@ app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use(cookieParser());
 
+// Serve locally saved uploads so frontend can fetch images from the backend
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+
 app.use('/api/auth', authRoutes);
 app.use('/api/lost-items', lostItemRoutes);
 app.use('/api/found-items', foundItemRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/feed', feedRoutes);
+app.use('/api/queries', queryRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.get('/health', (req, res) => {

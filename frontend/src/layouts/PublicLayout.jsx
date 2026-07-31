@@ -238,24 +238,6 @@ export function PublicLayout() {
             <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
               © {new Date().getFullYear()} Lagronite. All rights reserved.
             </p>
-            <div className="flex items-center gap-6">
-              <Link 
-                to="/terms" 
-                className={`text-sm transition-colors ${
-                  isDark ? 'text-slate-500 hover:text-slate-300' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                Terms
-              </Link>
-              <Link 
-                to="/privacy" 
-                className={`text-sm transition-colors ${
-                  isDark ? 'text-slate-500 hover:text-slate-300' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                Privacy
-              </Link>
-            </div>
           </div>
         </div>
       </footer>

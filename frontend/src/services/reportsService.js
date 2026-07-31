@@ -4,6 +4,10 @@ export function fetchAdminReports() {
   return request('/api/reports/admin')
 }
 
+export function fetchAdminClaimedReports() {
+  return request('/api/reports/admin/claimed')
+}
+
 export function fetchReportChat(reportType, reportId) {
   return request(`/api/chats/${reportType}/${reportId}`)
 }

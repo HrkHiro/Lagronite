@@ -10,6 +10,7 @@ import {
   MdLogout,
   MdLightMode,
   MdDarkMode,
+  MdBugReport,
 } from 'react-icons/md'
 
 import { useAuth } from '../hooks/useAuth.js'
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/student/lost-items', icon: MdReportProblem, label: 'Lost Items' },
   { to: '/student/reports', icon: MdAssignment, label: 'My Reports' },
   { to: '/student/create-report', icon: MdAddCircleOutline, label: 'Create Post' },
+  { to: '/student/queries', icon: MdBugReport, label: 'Queries' },
 ]
 
 function getInitial(name) {

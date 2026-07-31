@@ -11,6 +11,8 @@ import {
   MdAdminPanelSettings,
   MdLightMode,
   MdDarkMode,
+  MdArchive,
+  MdBugReport,
 } from 'react-icons/md'
 import { useAuth } from '../hooks/useAuth.js'
 import { logoutUser } from '../services/authService.js'
@@ -19,6 +21,9 @@ const navItems = [
   { to: '/admin/dashboard', icon: MdDashboard, label: 'Dashboard' },
   { to: '/admin/post-items', icon: MdPostAdd, label: 'Post Items' },
   { to: '/admin/reports', icon: MdAssignment, label: 'Reports' },
+  { to: '/admin/claimed-items', icon: MdAssignment, label: 'Claimed Items' },
+  { to: '/admin/archive', icon: MdArchive, label: 'Archive' },
+  { to: '/admin/queries', icon: MdBugReport, label: 'Queries' },
   { to: '/admin/users', icon: MdPeople, label: 'Users' },
 ]
 

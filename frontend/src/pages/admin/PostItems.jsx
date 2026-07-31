@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import Webcam from 'react-webcam'
 import { request } from '../../services/api.js'
 import {
   MdCategory,
@@ -15,6 +16,8 @@ import {
   MdError,
   MdCheckCircle,
   MdSend,
+  MdPhotoLibrary,
+  MdCameraAlt,
 } from 'react-icons/md'
 
 const initialState = {
@@ -49,9 +52,12 @@ export function AdminPostItems() {
   const [errors, setErrors] = useState({})
   const [message, setMessage] = useState({ type: '', text: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [cameraActive, setCameraActive] = useState(false)
   const { theme } = useOutletContext() || {}
-  
+
   const isDark = theme === undefined ? true : theme === 'dark'
+  const fileInputRef = useRef(null)
+  const webcamRef = useRef(null)
 
   const handleChange = (event) => {
     const { name, value, type, files } = event.target
@@ -67,11 +73,25 @@ export function AdminPostItems() {
         const result = String(reader.result || '')
         setFormData((current) => ({ ...current, image: result }))
         setPreviewUrl(result)
+        setCameraActive(false)
       }
       reader.readAsDataURL(file)
       return
     }
     setFormData((current) => ({ ...current, [name]: value }))
+  }
+
+  const handleCapture = () => {
+    const screenshot = webcamRef.current?.getScreenshot()
+    if (!screenshot) {
+      setMessage({ type: 'error', text: 'Unable to capture photo. Please allow camera access.' })
+      return
+    }
+
+    setFormData((current) => ({ ...current, image: screenshot }))
+    setPreviewUrl(screenshot)
+    setCameraActive(false)
+    setMessage({ type: '', text: '' })
   }
 
   const validate = () => {
@@ -328,18 +348,79 @@ export function AdminPostItems() {
                   <label className={`block text-base font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                     Upload Image
                   </label>
-                  <div className="relative">
-                    <MdImage className={`absolute left-4 top-1/2 -translate-y-1/2 text-2xl ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleChange}
-                      className={`w-full rounded-xl border border-dashed pl-12 pr-4 py-4 text-base outline-none transition-all duration-200 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-500 file:px-5 file:py-2.5 file:text-base file:font-semibold file:text-white file:transition-all hover:file:bg-emerald-400 file:cursor-pointer ${
-                        isDark
-                          ? 'border-white/10 bg-slate-900/60 text-slate-300 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50'
-                          : 'border-gray-300 bg-white text-gray-600 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50'
-                      }`}
-                    />
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <MdImage className={`absolute left-4 top-1/2 -translate-y-1/2 text-2xl ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleChange}
+                        className="hidden"
+                      />
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-3.5 text-base font-medium transition-all duration-200 ${
+                            isDark
+                              ? 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'
+                              : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <MdPhotoLibrary className="text-2xl" />
+                          Choose Photo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCameraActive(true)}
+                          className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-3.5 text-base font-medium transition-all duration-200 ${
+                            isDark
+                              ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                              : 'border-emerald-400/30 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                          }`}
+                        >
+                          <MdCameraAlt className="text-2xl" />
+                          Take Photo
+                        </button>
+                      </div>
+                    </div>
+
+                    {cameraActive && (
+                      <div className={`rounded-xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-gray-50'} p-4 backdrop-blur-sm`}>
+                        <p className={`text-sm font-medium uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                          Camera Preview
+                        </p>
+                        <Webcam
+                          audio={false}
+                          mirrored={false}
+                          ref={webcamRef}
+                          screenshotFormat="image/jpeg"
+                          videoConstraints={{ facingMode: 'environment' }}
+                          className="mt-3 h-56 w-full rounded-lg bg-black object-cover"
+                        />
+                        <div className="mt-3 flex gap-3">
+                          <button
+                            type="button"
+                            onClick={handleCapture}
+                            className="flex-1 rounded-xl bg-emerald-500 py-3 text-base font-medium text-white transition-all duration-200 hover:bg-emerald-400"
+                          >
+                            Capture Photo
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCameraActive(false)}
+                            className={`flex-1 rounded-xl border py-3 text-base font-medium transition-all duration-200 ${
+                              isDark
+                                ? 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'
+                                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-100'
+                            }`}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <FieldError isDark={isDark}>{errors.image}</FieldError>
                 </div>

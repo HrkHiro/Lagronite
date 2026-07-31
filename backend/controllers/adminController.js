@@ -1,6 +1,73 @@
 const prisma = require('../utils/prisma')
 const { mapLostItem, mapFoundItem } = require('../utils/itemMapper')
 
+exports.getAdminExportData = async (req, res) => {
+  try {
+    const [users, lostItems, foundItems, comments, reactions, chats, chatMessages] = await Promise.all([
+      prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.lostItem.findMany({
+        include: { owner: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.foundItem.findMany({
+        include: { finder: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.itemComment.findMany({
+        include: { user: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.itemReaction.findMany({
+        include: { user: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.reportChat.findMany({
+        include: {
+          participants: { include: { user: true } },
+          messages: { orderBy: { createdAt: 'asc' } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.chatMessage.findMany({
+        include: { sender: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ])
+
+    return res.json({
+      users,
+      lostItems,
+      foundItems,
+      comments,
+      reactions,
+      chats,
+      messages: chatMessages,
+    })
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Failed to load admin export data',
+      error: error.message,
+    })
+  }
+}
+
+exports.listArchiveRecords = async (req, res) => {
+  try {
+    const records = await prisma.archiveRecord.findMany({
+      orderBy: { deletedAt: 'desc' },
+    })
+
+    return res.status(200).json({ records })
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Failed to load archive',
+      error: error.message,
+    })
+  }
+}
+
 exports.getAdminDashboard = async (req, res) => {
   try {
     const [lostItems, foundItems] = await Promise.all([

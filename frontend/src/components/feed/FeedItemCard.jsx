@@ -5,6 +5,7 @@ import {
   MdCategory,
   MdPerson,
 } from 'react-icons/md'
+import ImageWithPrivacy from '../ImageWithPrivacy.jsx'
 
 function getStatusColor(status, isDark) {
   switch (status) {
@@ -110,9 +111,10 @@ export function FeedItemCard({ item, onOpen, isDark = true }) {
       {/* Image */}
       <div className={`relative overflow-hidden ${isDark ? 'bg-slate-950' : 'bg-gray-100'}`}>
         {item.image ? (
-          <img
+          <ImageWithPrivacy
             src={item.image}
             alt={item.itemName}
+            ownerId={item.ownerId || item.finderId || null}
             className="h-[320px] w-full object-cover transition duration-500 group-hover:scale-105"
           />
         ) : (

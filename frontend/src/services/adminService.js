@@ -4,6 +4,10 @@ export function fetchAdminDashboard() {
   return request('/api/admin/dashboard')
 }
 
+export function fetchAdminExportData() {
+  return request('/api/admin/dashboard/export-data')
+}
+
 export function fetchAdminUsers() {
   return request('/api/admin/users')
 }

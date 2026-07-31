@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useOutletContext } from 'react-router-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { 
   MdPerson, 
@@ -13,11 +14,14 @@ import {
 } from 'react-icons/md'
 import { useAuth } from '../../hooks/useAuth.js'
 import { registerStudent } from '../../services/authService.js'
+import TermsQuiz from '../../components/TermsQuiz.jsx'
 
 const initialErrors = { name: '', email: '', password: '', confirmPassword: '', form: '' }
 
 export function Register({ isDark: propIsDark }) {
   const { isAuthenticated, role, login } = useAuth()
+  const outlet = useOutletContext()
+  const contextIsDark = outlet?.isDark
   const navigate = useNavigate()
 
   const [formData, setFormData] = useState({
@@ -25,14 +29,17 @@ export function Register({ isDark: propIsDark }) {
     email: '',
     password: '',
     confirmPassword: '',
+    termsAccepted: false,
   })
   const [errors, setErrors] = useState(initialErrors)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showQuiz, setShowQuiz] = useState(false)
+  const [quizResult, setQuizResult] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  // Check if dark mode class exists on HTML element
-  const isDark = propIsDark !== undefined ? propIsDark : document.documentElement.classList.contains('dark')
+  // Obtain dark mode from Outlet context when available, otherwise fallback
+  const isDark = contextIsDark !== undefined ? contextIsDark : (propIsDark !== undefined ? propIsDark : document.documentElement.classList.contains('dark'))
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -82,18 +89,37 @@ export function Register({ isDark: propIsDark }) {
       nextErrors.confirmPassword = 'Passwords do not match'
     }
 
+    if (!formData.termsAccepted) {
+      nextErrors.form = 'You must read and agree to the Lost and Found User Agreement and Privacy Policy before creating an account.'
+    }
+
     setErrors(nextErrors)
-    return !nextErrors.name && !nextErrors.email && !nextErrors.password && !nextErrors.confirmPassword
+    return !nextErrors.name && !nextErrors.email && !nextErrors.password && !nextErrors.confirmPassword && !nextErrors.form
   }
 
   const handleChange = (event) => {
-    const { name, value } = event.target
-    setFormData((current) => ({ ...current, [name]: value }))
+    const { name, value, type, checked } = event.target
+    setFormData((current) => ({
+      ...current,
+      [name]: type === 'checkbox' ? checked : value,
+    }))
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
     if (!validate()) return
+    // Open quiz modal before registering
+    setShowQuiz(true)
+  }
+
+  const handleQuizComplete = async ({ score, passed }) => {
+    setShowQuiz(false)
+    setQuizResult({ score, passed })
+
+    if (!passed) {
+      setErrors((current) => ({ ...current, form: 'You must pass the Terms quiz with at least 4/6 to create an account.' }))
+      return
+    }
 
     setIsSubmitting(true)
     setErrors(initialErrors)
@@ -103,6 +129,8 @@ export function Register({ isDark: propIsDark }) {
         name: formData.name.trim(),
         email: formData.email.trim(),
         password: formData.password,
+        quizScore: score,
+        termsAgreed: true,
       })
       login(response.user ? { ...response.user, token: response.token } : response, true)
       navigate('/student/dashboard', { replace: true })
@@ -111,6 +139,10 @@ export function Register({ isDark: propIsDark }) {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleQuizCancel = () => {
+    setShowQuiz(false)
   }
 
   return (
@@ -376,10 +408,10 @@ export function Register({ isDark: propIsDark }) {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isSubmitting}
                 className={`flex w-full items-center justify-center gap-3 rounded-xl bg-emerald-500 px-6 py-4 text-lg font-semibold text-white transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] disabled:opacity-50 disabled:cursor-not-allowed ${
                   isSubmitting ? 'cursor-wait' : ''
                 }`}
+                disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <>
@@ -394,21 +426,39 @@ export function Register({ isDark: propIsDark }) {
                 )}
               </button>
 
-              {/* Terms and Login Link */}
-              <p className={`text-center text-sm ${isDark ? 'text-slate-500' : 'text-gray-500'}`}>
-                By creating an account, you agree to our{' '}
-                <Link to="/terms" className="text-emerald-500 hover:text-emerald-400 transition font-medium">
-                  Terms of Service
-                </Link>
-              </p>
+              <div className={`mt-5 rounded-2xl border p-4 text-sm ${isDark ? 'border-slate-700 bg-slate-900/60 text-slate-200' : 'border-emerald-200 bg-emerald-50/60 text-slate-700'}`}>
+                <p className="font-medium mb-3">Please read and agree to the terms before continuing.</p>
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    name="termsAccepted"
+                    checked={formData.termsAccepted}
+                    onChange={handleChange}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+                  />
+                  <label className="text-sm leading-6">
+                    I have read and agree to the{' '}
+                    <Link to="/terms" className="text-emerald-500 hover:text-emerald-400 font-medium">
+                      Lost and Found User Agreement
+                    </Link>{' '}
+                    and{' '}
+                    <Link to="/privacy" className="text-emerald-500 hover:text-emerald-400 font-medium">
+                      Privacy Policy
+                    </Link>.
+                  </label>
+                </div>
+              </div>
 
-              <div className={`text-center text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+              <div className={`mt-4 text-center text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
                 Already have an account?{' '}
                 <Link to="/login" className="font-medium text-emerald-500 hover:text-emerald-400 transition-colors">
                   Sign in here
                 </Link>
               </div>
             </form>
+            {showQuiz && (
+              <TermsQuiz onComplete={handleQuizComplete} onCancel={handleQuizCancel} />
+            )}
           </div>
         </div>
       </div>

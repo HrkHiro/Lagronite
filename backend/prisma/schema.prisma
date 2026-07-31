@@ -52,6 +52,12 @@ model User {
   reactions      ItemReaction[]
   sentMessages   ChatMessage[]
   chatLinks      ReportChatParticipant[]
+  systemQueries  SystemQuery[]
+  // Terms & quiz fields
+  termsQuizScore Int?
+  termsQuizPassed Boolean @default(false)
+  termsAgreed Boolean @default(false)
+  termsAgreedAt DateTime?
 }
 
 model LostItem {
@@ -149,4 +155,43 @@ model ChatMessage {
   sender    User       @relation(fields: [senderId], references: [id], onDelete: Restrict)
 
   @@index([chatId, createdAt])
+}
+
+model ArchiveRecord {
+  id            String   @id @default(cuid())
+  entityType    String
+  itemName      String
+  category      String
+  color         String?
+  description   String?  @db.Text
+  date          DateTime?
+  location      String?
+  image         String?
+  status        String?
+  reporterName  String?
+  reporterEmail String?
+  claimerName   String?
+  reason        String?
+  deletedBy     String?
+  deletedAt     DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([entityType, deletedAt])
+}
+
+model SystemQuery {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  severity    String   @default("medium")
+  category    String   @default("bug")
+  status      String   @default("Open")
+  reporterId  String
+  reporter    User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([reporterId, createdAt])
 }

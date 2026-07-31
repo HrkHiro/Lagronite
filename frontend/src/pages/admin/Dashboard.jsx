@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import { jsPDF } from 'jspdf'
+import 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar,
 } from 'recharts'
-import { fetchAdminDashboard } from '../../services/adminService.js'
+import { fetchAdminDashboard, fetchAdminExportData } from '../../services/adminService.js'
 import {
   MdDashboard,
   MdReportProblem,
@@ -16,28 +19,243 @@ import {
   MdAssessment,
   MdError,
   MdSearchOff,
+  MdDownload,
+  MdFileDownload,
 } from 'react-icons/md'
 
 const COLORS = ['#10b981', '#f43f5e', '#3b82f6', '#f59e0b']
 
 export function AdminDashboard() {
   const [data, setData] = useState(null)
+  const [exportData, setExportData] = useState(null)
+  const [selectedSourceGroups, setSelectedSourceGroups] = useState([
+    'Users',
+    'Lost Items',
+    'Found Items',
+    'Comments',
+    'Reactions',
+    'Chats',
+    'Messages',
+  ])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const { theme } = useOutletContext() || {}
-  
+
   const isDark = theme === undefined ? true : theme === 'dark'
+
+  const exportGroups = useMemo(() => [
+    'Users',
+    'Lost Items',
+    'Found Items',
+    'Comments',
+    'Reactions',
+    'Chats',
+    'Messages',
+  ], [])
+
+  const categories = useMemo(() => {
+    return [...new Set((exportData?.lostItems || []).concat(exportData?.foundItems || []).map((item) => item.category).filter(Boolean))]
+  }, [exportData])
+
+  const toggleGroup = (group) => {
+    setSelectedSourceGroups((prev) => {
+      if (prev.includes(group)) {
+        return prev.filter((item) => item !== group)
+      }
+      return [...prev, group]
+    })
+  }
+
+  const normalizeUserRow = (item) => ({
+    Id: item.id,
+    Name: item.name,
+    Email: item.email,
+    Role: item.role,
+    Status: item.status,
+    CreatedAt: new Date(item.createdAt).toLocaleString(),
+  })
+
+  const normalizeLostRow = (item) => ({
+    ReportType: 'lost',
+    Id: item.id,
+    ItemName: item.itemName,
+    Category: item.category,
+    Color: item.color,
+    Description: item.description,
+    Location: item.locationLost,
+    Date: new Date(item.dateLost).toLocaleDateString(),
+    Status: item.status,
+    OwnerName: item.owner?.name || 'Unknown',
+    OwnerEmail: item.owner?.email || 'N/A',
+    ClaimedBy: item.claimerName || 'Unknown',
+    CreatedAt: new Date(item.createdAt).toLocaleString(),
+  })
+
+  const normalizeFoundRow = (item) => ({
+    ReportType: 'found',
+    Id: item.id,
+    ItemName: item.itemName,
+    Category: item.category,
+    Color: item.color,
+    Description: item.description,
+    Location: item.locationFound,
+    Date: new Date(item.dateFound).toLocaleDateString(),
+    Status: item.status,
+    FinderName: item.finder?.name || 'Unknown',
+    FinderEmail: item.finder?.email || 'N/A',
+    ClaimedBy: item.claimerName || 'Unknown',
+    CreatedAt: new Date(item.createdAt).toLocaleString(),
+  })
+
+  const normalizeCommentRow = (item) => ({
+    Id: item.id,
+    ReportType: item.itemType,
+    ReportId: item.itemId,
+    CommentAuthor: item.user?.name || 'Unknown',
+    CommentAuthorEmail: item.user?.email || 'N/A',
+    Content: item.content,
+    CreatedAt: new Date(item.createdAt).toLocaleString(),
+  })
+
+  const normalizeReactionRow = (item) => ({
+    Id: item.id,
+    ReportType: item.itemType,
+    ReportId: item.itemId,
+    ReactionType: item.reactionType,
+    UserName: item.user?.name || 'Unknown',
+    UserEmail: item.user?.email || 'N/A',
+    CreatedAt: new Date(item.createdAt).toLocaleString(),
+  })
+
+  const normalizeChatRow = (item) => ({
+    ChatId: item.id,
+    ReportType: item.reportType,
+    ReportId: item.reportId,
+    IsClosed: item.isClosed ? 'Yes' : 'No',
+    CreatedAt: new Date(item.createdAt).toLocaleString(),
+    ParticipantCount: item.participants?.length || 0,
+    MessageCount: item.messages?.length || 0,
+  })
+
+  const normalizeMessageRow = (item) => ({
+    MessageId: item.id,
+    ChatId: item.chatId,
+    SenderName: item.sender?.name || 'Unknown',
+    SenderEmail: item.sender?.email || 'N/A',
+    Text: item.text,
+    CreatedAt: new Date(item.createdAt).toLocaleString(),
+  })
+
+  const exportExcel = () => {
+    if (!exportData) return
+
+    const workbook = XLSX.utils.book_new()
+
+    const exportMap = {
+      Users: exportData.users?.map(normalizeUserRow) || [],
+      'Lost Items': exportData.lostItems?.map(normalizeLostRow) || [],
+      'Found Items': exportData.foundItems?.map(normalizeFoundRow) || [],
+      Comments: exportData.comments?.map(normalizeCommentRow) || [],
+      Reactions: exportData.reactions?.map(normalizeReactionRow) || [],
+      Chats: exportData.chats?.map(normalizeChatRow) || [],
+      Messages: exportData.messages?.map(normalizeMessageRow) || [],
+    }
+
+    const selectedSheets = selectedSourceGroups.map((group) => ({ group, rows: exportMap[group] || [] }))
+
+    selectedSheets.forEach(({ group, rows }) => {
+      const sheet = XLSX.utils.json_to_sheet(rows)
+      XLSX.utils.book_append_sheet(workbook, sheet, group)
+    })
+
+    if (selectedSheets.length === 0) {
+      const emptySheet = XLSX.utils.json_to_sheet([])
+      XLSX.utils.book_append_sheet(workbook, emptySheet, 'No Data')
+    }
+
+    const allCategorySheet = XLSX.utils.json_to_sheet((exportData.lostItems || []).concat(exportData.foundItems || []).map((item) => ({
+      ReportType: item.reportType || (item.locationLost ? 'lost' : 'found'),
+      ItemName: item.itemName,
+      Category: item.category,
+      Color: item.color,
+      Status: item.status,
+      Location: item.locationLost || item.locationFound || 'N/A',
+      Date: new Date(item.dateLost || item.dateFound).toLocaleDateString(),
+      ClaimedBy: item.claimerName || 'Unknown',
+      OwnerName: item.owner?.name || item.finder?.name || 'Unknown',
+      OwnerEmail: item.owner?.email || item.finder?.email || 'N/A',
+    })))
+    XLSX.utils.book_append_sheet(workbook, allCategorySheet, 'All Reports')
+
+    categories.forEach((category) => {
+      const categoryRows = (exportData.lostItems || []).concat(exportData.foundItems || [])
+        .filter((item) => item.category === category)
+        .map((item) => ({
+          ReportType: item.reportType || (item.locationLost ? 'lost' : 'found'),
+          ItemName: item.itemName,
+          Category: item.category,
+          Color: item.color,
+          Status: item.status,
+          Location: item.locationLost || item.locationFound || 'N/A',
+          Date: new Date(item.dateLost || item.dateFound).toLocaleDateString(),
+          ClaimedBy: item.claimerName || 'Unknown',
+          OwnerName: item.owner?.name || item.finder?.name || 'Unknown',
+          OwnerEmail: item.owner?.email || item.finder?.email || 'N/A',
+        }))
+
+      const categorySheet = XLSX.utils.json_to_sheet(categoryRows)
+      XLSX.utils.book_append_sheet(workbook, categorySheet, category || 'Uncategorized')
+    })
+
+    XLSX.writeFile(workbook, 'admin-full-report-export.xlsx')
+  }
+
+  const exportPdf = () => {
+    if (!exportData) return
+
+    const doc = new jsPDF({ orientation: 'landscape' })
+    doc.setFontSize(17)
+    doc.text('Lagronite Admin Full Export', 14, 16)
+
+    const reportRows = (exportData.lostItems || []).concat(exportData.foundItems || []).map((item) => [
+      item.reportType || (item.locationLost ? 'lost' : 'found'),
+      item.itemName,
+      item.category,
+      item.color,
+      item.status,
+      item.claimerName || 'Unknown',
+      item.owner?.name || item.finder?.name || 'Unknown',
+      new Date(item.dateLost || item.dateFound).toLocaleDateString(),
+      item.locationLost || item.locationFound || 'N/A',
+    ])
+
+    doc.autoTable({
+      head: [['Type', 'Item Name', 'Category', 'Color', 'Status', 'Claimed By', 'Reporter', 'Date', 'Location']],
+      body: reportRows,
+      startY: 24,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [16, 185, 129] },
+      alternateRowStyles: { fillColor: [243, 244, 246] },
+    })
+
+    doc.save('admin-full-report-export.pdf')
+  }
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const json = await fetchAdminDashboard()
-        setData(json)
+        const [dashboardJson, exportJson] = await Promise.all([
+          fetchAdminDashboard(),
+          fetchAdminExportData(),
+        ])
+        setData(dashboardJson)
+        setExportData(exportJson)
         setError(null)
       } catch (err) {
         console.error('Dashboard fetch error:', err)
         setError(err.message)
         setData(null)
+        setExportData(null)
       } finally {
         setLoading(false)
       }
@@ -101,6 +319,70 @@ export function AdminDashboard() {
             </div>
           </div>
           <div className="h-1 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 opacity-80" />
+        </div>
+
+        <div className={`mb-8 rounded-2xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} p-5 shadow-lg`}>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className={`text-sm font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                Full report export
+              </p>
+              <p className={`mt-1 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                Excel workbook includes <span className="font-semibold">All Reports</span> plus one sheet per category, and you can select which source tables to include.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={exportExcel}
+                className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                  isDark
+                    ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20'
+                    : 'border-emerald-400/30 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                <MdFileDownload className="text-lg" />
+                Export Excel
+              </button>
+              <button
+                type="button"
+                onClick={exportPdf}
+                className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                  isDark
+                    ? 'border-cyan-400/20 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20'
+                    : 'border-cyan-400/30 bg-cyan-50 text-cyan-700 hover:bg-cyan-100'
+                }`}
+              >
+                <MdDownload className="text-lg" />
+                Export PDF
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {exportGroups.map((group) => {
+              const active = selectedSourceGroups.includes(group)
+              return (
+                <button
+                  key={group}
+                  type="button"
+                  onClick={() => toggleGroup(group)}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                    active
+                      ? isDark
+                        ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+                        : 'border-emerald-400/30 bg-emerald-50 text-emerald-700'
+                      : isDark
+                        ? 'border-white/10 bg-white/[0.02] text-slate-300'
+                        : 'border-gray-200 bg-gray-50 text-gray-700'
+                  }`}
+                >
+                  {group}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/* KPI Cards */}

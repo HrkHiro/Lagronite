@@ -2,7 +2,9 @@ const express = require('express')
 const { protect, restrictTo } = require('../middleware/authMiddleware')
 
 const {
-  getAdminDashboard
+  getAdminDashboard,
+  getAdminExportData,
+  listArchiveRecords,
 } = require('../controllers/adminController')
 
 const {
@@ -19,6 +21,8 @@ router.use(protect, restrictTo('admin'))
 
 // dashboard
 router.get('/dashboard', getAdminDashboard)
+router.get('/dashboard/export-data', getAdminExportData)
+router.get('/archive', listArchiveRecords)
 
 // users
 router.get('/users', getUsers)

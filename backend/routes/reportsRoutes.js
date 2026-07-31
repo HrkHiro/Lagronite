@@ -2,6 +2,7 @@ const express = require('express');
 const { protect, restrictTo } = require('../middleware/authMiddleware');
 const {
   listAllReportsAdmin,
+  listClaimedReportsAdmin,
   listMyReports,
   getReportDetails,
   updateReportAdmin,
@@ -13,6 +14,7 @@ const {
 const router = express.Router();
 
 router.get('/admin', protect, restrictTo('admin'), listAllReportsAdmin);
+router.get('/admin/claimed', protect, restrictTo('admin'), listClaimedReportsAdmin);
 router.put('/admin/:reportType/:reportId', protect, restrictTo('admin'), updateReportAdmin);
 router.delete('/admin/:reportType/:reportId', protect, restrictTo('admin'), deleteReportAdmin);
 

@@ -9,6 +9,7 @@ import {
   MdVisibility,
   MdImage,
 } from 'react-icons/md'
+import ImageWithPrivacy from '../ImageWithPrivacy.jsx'
 
 function getStatusClass(status, isDark) {
   switch (status) {
@@ -56,9 +57,10 @@ export function ItemCard({ item, onViewDetails, isDark = true }) {
         {/* Image */}
         <div className="h-72 w-full lg:h-full">
           {item.image ? (
-            <img
+            <ImageWithPrivacy
               src={item.image}
               alt={item.itemName}
+              ownerId={item.ownerId || item.finderId || null}
               className="h-full w-full object-cover"
             />
           ) : (

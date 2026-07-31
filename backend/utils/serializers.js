@@ -18,6 +18,10 @@ function serializeUser(user) {
     profileImage: user.profileImage || null,
     status: user.status,
     suspendedUntil: toDateValue(user.suspendedUntil),
+    termsQuizScore: user.termsQuizScore ?? null,
+    termsQuizPassed: Boolean(user.termsQuizPassed),
+    termsAgreed: Boolean(user.termsAgreed),
+    termsAgreedAt: toDateValue(user.termsAgreedAt),
     createdAt: toDateValue(user.createdAt),
     updatedAt: toDateValue(user.updatedAt),
   };

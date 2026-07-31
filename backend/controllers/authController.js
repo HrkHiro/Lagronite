@@ -105,7 +105,7 @@ function isDatabaseAuthError(error) {
 
 exports.registerStudent = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, quizScore, termsAgreed } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
@@ -126,12 +126,24 @@ exports.registerStudent = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    // Validate terms quiz: require quizScore >= 4 and explicit agreement
+    const numericScore = typeof quizScore === 'number' ? Math.floor(quizScore) : null;
+    const passedQuiz = numericScore !== null && numericScore >= 4 && termsAgreed === true;
+
+    if (!passedQuiz) {
+      return res.status(400).json({ message: 'You must pass the Terms of Service quiz (minimum 4/6) and agree to the Terms before creating an account.' });
+    }
+
     const user = await prisma.user.create({
       data: {
         name,
         email: normalizedEmail,
         password: hashedPassword,
         role: 'student',
+        termsQuizScore: numericScore,
+        termsQuizPassed: true,
+        termsAgreed: true,
+        termsAgreedAt: new Date(),
       },
     });
 
@@ -176,6 +188,11 @@ exports.loginStudent = async (req, res) => {
           message: `Account suspended until ${new Date(user.suspendedUntil).toLocaleString()}`,
         });
       }
+    }
+
+    // Require Terms quiz passed before allowing login
+    if (!user.termsQuizPassed) {
+      return res.status(403).json({ message: 'You must complete and pass the Terms of Service quiz before logging in.' });
     }
 
     const passwordMatches = await bcrypt.compare(password, user.password);

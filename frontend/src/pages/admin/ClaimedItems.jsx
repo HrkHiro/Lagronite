@@ -64,7 +64,7 @@ export function AdminClaimedItems() {
   }, [fetchClaimedReports])
 
   const handleDelete = async (item) => {
-    if (!window.confirm('Delete this claimed record permanently?')) return
+    if (!window.confirm('Move this claimed record to archive? You can restore it later from the Archive page.')) return
 
     try {
       await deleteReport(item.reportType, item.id)

@@ -176,9 +176,13 @@ exports.loginStudent = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // 🔒 BLOCK BANNED ACCOUNT
+    // 🔒 BLOCK BANNED / DELETED ACCOUNT
     if (user.status === 'banned') {
       return res.status(403).json({ message: 'Your account has been banned.' });
+    }
+
+    if (user.status === 'deleted') {
+      return res.status(403).json({ message: 'This account has been deleted.' });
     }
 
     // ⏳ BLOCK ACTIVE SUSPENSION
@@ -188,6 +192,14 @@ exports.loginStudent = async (req, res) => {
           message: `Account suspended until ${new Date(user.suspendedUntil).toLocaleString()}`,
         });
       }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          status: 'active',
+          suspendedUntil: null,
+        },
+      })
     }
 
     // Require Terms quiz passed before allowing login

@@ -1,15 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { StudentReportDetailModal } from '../../components/student/ReportDetailModal.jsx'
+import { deleteMyReport } from '../../services/reportsService.js'
 import {
   MdSearch,
   MdFilterList,
-  MdInsertChart,
-  MdReportProblem,
-  MdCheckCircle,
-  MdAssignmentReturn,
-  MdInsights,
   MdChat,
+  MdReportProblem,
 } from 'react-icons/md'
 
 const statusOptions = ['All', 'Lost', 'Found', 'Claimed', 'Returned']
@@ -37,22 +34,6 @@ function getStatusClass(status, isDark) {
         ? 'border-white/10 bg-white/5 text-slate-200' 
         : 'border-gray-200 bg-gray-50 text-gray-700'
   }
-}
-
-function KpiCard({ label, value, icon: Icon, color, isDark }) {
-  return (
-    <div className={`rounded-xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} p-6 backdrop-blur-xl shadow-lg`}>
-      <div className="flex items-center gap-3">
-        <Icon className={`text-2xl ${color}`} />
-        <p className={`text-sm font-medium uppercase tracking-[0.2em] ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-          {label}
-        </p>
-      </div>
-      <h3 className={`mt-2 text-3xl font-bold sm:text-4xl ${color}`}>
-        {value}
-      </h3>
-    </div>
-  )
 }
 
 function ReportCard({ report, onClick, isDark }) {
@@ -113,6 +94,8 @@ export function StudentMyReports() {
   const [reports, setReports] = useState([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('All')
+  const [category, setCategory] = useState('All')
+  const [categoryOptions, setCategoryOptions] = useState(['All'])
   const [loading, setLoading] = useState(true)
   const [selectedReport, setSelectedReport] = useState(null)
   const [messageCount, setMessageCount] = useState(0)
@@ -128,6 +111,7 @@ export function StudentMyReports() {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (status !== 'All') params.set('status', status)
+      if (category !== 'All') params.set('category', category)
 
       try {
         const res = await fetch(
@@ -137,6 +121,8 @@ export function StudentMyReports() {
         const data = await res.json()
         if (!cancelled) {
           setReports(data.reports || [])
+          const nextCategories = ['All', ...new Set((data.reports || []).map((item) => item.category).filter(Boolean))]
+          setCategoryOptions(nextCategories)
         }
       } catch (err) {
         console.error('Fetch failed:', err)
@@ -150,7 +136,7 @@ export function StudentMyReports() {
     return () => {
       cancelled = true
     }
-  }, [search, status])
+  }, [search, status, category])
 
   // KPI calculations
   const total = reports.length
@@ -184,6 +170,22 @@ export function StudentMyReports() {
   const handleOpenChat = () => {
     if (!selectedReport) return
     navigate(`/student/chat/${selectedReport.reportType}/${selectedReport.id}`)
+  }
+
+  const handleDeleteReport = async () => {
+    if (!selectedReport) return
+
+    const confirmDelete = window.confirm(`Delete this ${selectedReport.reportType} post?`)
+    if (!confirmDelete) return
+
+    try {
+      await deleteMyReport(selectedReport.reportType, selectedReport.id)
+      setReports((items) => items.filter((item) => item.id !== selectedReport.id))
+      setSelectedReport(null)
+      setMessageCount(0)
+    } catch (error) {
+      window.alert(error?.message || 'Unable to delete report')
+    }
   }
 
   return (
@@ -234,22 +236,6 @@ export function StudentMyReports() {
           <div className="h-1 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 opacity-80" />
         </div>
 
-        {/* KPI Cards - INCREASED sizes and spacing */}
-        <div className="grid gap-5 mb-8 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard label="Total Reports" value={total} icon={MdInsertChart} color={isDark ? 'text-white' : 'text-gray-900'} isDark={isDark} />
-          <KpiCard label="Lost Items" value={lost} icon={MdReportProblem} color={isDark ? 'text-rose-300' : 'text-rose-600'} isDark={isDark} />
-          <KpiCard label="Found Items" value={found} icon={MdCheckCircle} color={isDark ? 'text-sky-300' : 'text-sky-600'} isDark={isDark} />
-          <KpiCard label="Returned" value={returned} icon={MdAssignmentReturn} color={isDark ? 'text-emerald-300' : 'text-emerald-600'} isDark={isDark} />
-        </div>
-
-        {/* Smart Insight Banner - INCREASED size */}
-        <div className={`anim-rise mb-8 rounded-xl border ${isDark ? 'border-emerald-400/20 bg-emerald-500/10' : 'border-emerald-400/30 bg-emerald-50'} p-5 backdrop-blur-sm flex items-center gap-3`}>
-          <MdInsights className={`text-2xl shrink-0 ${isDark ? 'text-emerald-300' : 'text-emerald-600'}`} />
-          <p className={`text-base font-medium ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`}>
-            Smart Insight: You have {lost} active lost items. Check matching suggestions for possible recovery.
-          </p>
-        </div>
-
         {/* Filter Bar - INCREASED sizes */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="relative flex-1">
@@ -285,6 +271,29 @@ export function StudentMyReports() {
               {statusOptions.map((s) => (
                 <option key={s} value={s} className={isDark ? 'bg-slate-900' : 'bg-white'}>
                   {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="relative sm:w-56">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className={`w-full pl-4 pr-10 py-3.5 text-base rounded-xl border outline-none transition-all duration-200 appearance-none cursor-pointer ${
+                isDark
+                  ? 'bg-slate-900/60 border-white/10 text-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50'
+                  : 'bg-white border-gray-200 text-gray-900 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50'
+              }`}
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                backgroundPosition: 'right 0.75rem center',
+                backgroundRepeat: 'no-repeat',
+                backgroundSize: '1.5em 1.5em',
+              }}
+            >
+              {categoryOptions.map((option) => (
+                <option key={option} value={option} className={isDark ? 'bg-slate-900' : 'bg-white'}>
+                  {option}
                 </option>
               ))}
             </select>
@@ -331,6 +340,7 @@ export function StudentMyReports() {
           messageCount={messageCount}
           onClose={handleCloseReport}
           onOpenChat={handleOpenChat}
+          onDelete={handleDeleteReport}
         />
       )}
     </section>

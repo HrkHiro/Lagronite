@@ -43,6 +43,30 @@ exports.protect = async (req, res, next) => {
       return res.status(401).json({ message: 'User no longer exists' });
     }
 
+    if (user.status === 'deleted' || user.status === 'banned') {
+      clearAuthCookie(res);
+      return res.status(403).json({
+        message: user.status === 'deleted' ? 'This account has been deleted.' : 'Your account has been banned.',
+      });
+    }
+
+    if (user.status === 'suspended') {
+      if (user.suspendedUntil && new Date(user.suspendedUntil) > new Date()) {
+        clearAuthCookie(res);
+        return res.status(403).json({
+          message: `Account suspended until ${new Date(user.suspendedUntil).toLocaleString()}`,
+        });
+      }
+
+      await prisma.user.update({
+        where: { id: user.id || user._id },
+        data: {
+          status: 'active',
+          suspendedUntil: null,
+        },
+      })
+    }
+
     req.user = user;
     return next();
   } catch (error) {

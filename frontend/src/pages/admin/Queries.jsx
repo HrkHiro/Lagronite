@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { MdBugReport, MdSearchOff, MdError, MdCheckCircle, MdPendingActions } from 'react-icons/md'
+import { fetchSystemQueries } from '../../services/queryService.js'
 
 export function AdminQueries() {
   const [queries, setQueries] = useState([])
@@ -15,14 +16,7 @@ export function AdminQueries() {
       try {
         setLoading(true)
         setError('')
-        const response = await fetch('http://localhost:5000/api/queries', {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('lagronite_auth') ? JSON.parse(localStorage.getItem('lagronite_auth')).token : ''}`,
-          },
-        })
-        const data = await response.json()
-        if (!response.ok) throw new Error(data.message || 'Failed to load queries')
+        const data = await fetchSystemQueries()
         setQueries(data.queries || [])
       } catch (err) {
         setError(err.message)

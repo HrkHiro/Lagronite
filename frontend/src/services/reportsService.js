@@ -31,3 +31,23 @@ export function deleteReport(reportType, reportId) {
     method: 'DELETE',
   })
 }
+
+export function deleteMyReport(reportType, reportId) {
+  return request(`/api/reports/${reportType}/${reportId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function previewLostItemDraft(payload) {
+  return request('/api/lost-items/preview', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function previewFoundItemDraft(payload) {
+  return request('/api/found-items/preview', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}

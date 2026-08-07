@@ -13,9 +13,11 @@ export function CampusFeed({
   type = 'all',
   category = '',
   postedBy = '',
+  search = '',
   limit = 9,
   showPagination = true,
-  isDark = true, // Accept isDark prop
+  isDark = true,
+  onStats = null,
 }) {
   const [items, setItems] = useState([])
   const [page, setPage] = useState(1)
@@ -35,17 +37,22 @@ export function CampusFeed({
         ...(type !== 'all' ? { type } : {}),
         ...(category ? { category } : {}),
         ...(postedBy ? { postedBy } : {}),
+        ...(search ? { search } : {}),
       })
 
       setItems(data.items || [])
       setTotalPages(data.pagination?.totalPages || 1)
       setPage(data.pagination?.page || nextPage)
+
+      if (typeof onStats === 'function') {
+        onStats(data.stats || {})
+      }
     } catch (err) {
       setError(err.message || 'Failed to load feed')
     } finally {
       setLoading(false)
     }
-  }, [limit, type, category, postedBy])
+  }, [limit, type, category, postedBy, search, onStats])
 
   useEffect(() => {
     let ignore = false

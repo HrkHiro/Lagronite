@@ -219,7 +219,8 @@ function pickUpdateFields(reportType, body) {
     description: body.description,
     image: body.image,
     status: body.status,
-    claimerName: body.claimerName,
+    claimerName: body.claimerName || null,
+    claimedAt: body.claimedAt ? new Date(body.claimedAt) : null,
   };
 
   if (reportType === 'lost') {

@@ -1,33 +1,106 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { MdArchive, MdSearchOff, MdError, MdRestoreFromTrash } from 'react-icons/md'
+import { MdArchive, MdSearchOff, MdError, MdRestoreFromTrash, MdDeleteForever } from 'react-icons/md'
+import { fetchArchiveRecords, restoreArchiveRecord, deleteArchiveRecord, deleteArchiveRecords } from '../../services/adminService.js'
 
 export function AdminArchive() {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [restoringId, setRestoringId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
   const { theme } = useOutletContext() || {}
 
   const isDark = theme === undefined ? true : theme === 'dark'
 
-  useEffect(() => {
-    const fetchArchive = async () => {
-      try {
-        setLoading(true)
-        setError('')
-        const response = await fetch('http://localhost:5000/api/admin/archive')
-        const data = await response.json()
-        if (!response.ok) throw new Error(data.message || 'Failed to load archive')
-        setRecords(data.records || [])
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
+  const loadArchive = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const data = await fetchArchiveRecords()
+      setRecords(data.records || [])
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
-
-    fetchArchive()
   }, [])
+
+  useEffect(() => {
+    loadArchive()
+  }, [loadArchive])
+
+  const selectedCount = selectedIds.length
+
+  const allSelected = useMemo(() => {
+    return records.length > 0 && selectedIds.length === records.length
+  }, [records.length, selectedIds.length])
+
+  const toggleRecordSelection = (recordId) => {
+    setSelectedIds((current) => {
+      if (current.includes(recordId)) {
+        return current.filter((id) => id !== recordId)
+      }
+
+      return [...current, recordId]
+    })
+  }
+
+  const toggleAllRecords = () => {
+    if (allSelected) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(records.map((record) => record.id))
+    }
+  }
+
+  const handleRestore = async (record) => {
+    if (!window.confirm(`Restore "${record.itemName}" back to live reports?`)) return
+
+    try {
+      setRestoringId(record.id)
+      await restoreArchiveRecord(record.id)
+      await loadArchive()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setRestoringId(null)
+    }
+  }
+
+  const handleDelete = async (record) => {
+    if (!window.confirm(`Permanently delete "${record.itemName}" from the archive? This cannot be undone.`)) return
+
+    try {
+      setDeletingId(record.id)
+      await deleteArchiveRecord(record.id)
+      setSelectedIds((current) => current.filter((recordId) => recordId !== record.id))
+      await loadArchive()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return
+
+    if (!window.confirm(`Permanently delete ${selectedIds.length} selected archive record(s)? This cannot be undone.`)) return
+
+    try {
+      setBulkDeleting(true)
+      await deleteArchiveRecords(selectedIds)
+      setSelectedIds([])
+      await loadArchive()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
 
   return (
     <section className={`relative overflow-hidden min-h-screen ${isDark ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
@@ -44,11 +117,37 @@ export function AdminArchive() {
               Deleted report snapshots
             </h2>
             <p className={`mt-3 max-w-xl text-base leading-6 sm:text-lg ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
-              This archive keeps deleted report records and claimed-file removals for follow-up, audit, and compliance review.
+              Deleted reports and claimed records are kept here first. You can restore them back to live reports when needed.
             </p>
           </div>
           <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 opacity-80" />
         </div>
+
+        {!loading && !error && records.length > 0 && (
+          <div className={`mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} px-5 py-4 backdrop-blur-xl`}>
+            <div className="flex items-center gap-3">
+              <label className="inline-flex items-center gap-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-amber-500"
+                  checked={allSelected}
+                  onChange={toggleAllRecords}
+                />
+                <span className={isDark ? 'text-slate-300' : 'text-gray-700'}>Select all</span>
+              </label>
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isDark ? 'bg-white/8 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>{selectedCount} selected</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleDeleteSelected}
+              disabled={selectedCount === 0 || bulkDeleting}
+              className="inline-flex items-center gap-2 rounded-xl border border-rose-500/80 px-4 py-2 text-sm font-bold text-rose-500 transition hover:bg-rose-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <MdDeleteForever className="text-lg" />
+              {bulkDeleting ? 'Deleting...' : 'Delete selected'}
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div className={`flex h-48 items-center justify-center rounded-xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} backdrop-blur-xl`}>
@@ -73,9 +172,17 @@ export function AdminArchive() {
             {records.map((record) => (
               <article key={record.id} className={`rounded-xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} p-6 shadow-lg`}>
                 <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-500">{record.entityType}</p>
-                    <h3 className={`mt-2 text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{record.itemName}</h3>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 accent-amber-500"
+                      checked={selectedIds.includes(record.id)}
+                      onChange={() => toggleRecordSelection(record.id)}
+                    />
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-500">{record.entityType}</p>
+                      <h3 className={`mt-2 text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{record.itemName}</h3>
+                    </div>
                   </div>
                   <span className={`rounded-full border px-4 py-1.5 text-sm font-semibold ${isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-gray-200 bg-gray-50 text-gray-600'}`}>
                     {record.status || 'Archived'}
@@ -95,9 +202,30 @@ export function AdminArchive() {
                   <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Reporter</p>
                   <p className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{record.reporterName || 'Unknown'} ({record.reporterEmail || 'N/A'})</p>
                 </div>
-                <div className="mt-4 flex items-center gap-2 text-amber-500">
-                  <MdRestoreFromTrash className="text-xl" />
-                  <span className="text-sm font-medium">Archived record kept for audit and follow-up.</span>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-amber-500">
+                    <MdRestoreFromTrash className="text-xl" />
+                    <span className="text-sm font-medium">Ready for restore or audit review.</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(record)}
+                      disabled={deletingId === record.id}
+                      className="inline-flex items-center gap-2 rounded-xl border border-rose-500/70 px-4 py-2 text-sm font-semibold text-rose-500 transition hover:bg-rose-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <MdDeleteForever className="text-lg" />
+                      {deletingId === record.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRestore(record)}
+                      disabled={restoringId === record.id}
+                      className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {restoringId === record.id ? 'Restoring...' : 'Restore'}
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}

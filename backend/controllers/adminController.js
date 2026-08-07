@@ -68,6 +68,146 @@ exports.listArchiveRecords = async (req, res) => {
   }
 }
 
+const VALID_REPORT_STATUSES = new Set(['Lost', 'Found', 'Claimed', 'Returned'])
+
+async function resolveArchiveReporter(record) {
+  if (record.reporterEmail && record.reporterEmail !== 'N/A') {
+    return prisma.user.findUnique({ where: { email: record.reporterEmail } })
+  }
+
+  return null
+}
+
+exports.restoreArchiveRecord = async (req, res) => {
+  try {
+    const { recordId } = req.params
+    const record = await prisma.archiveRecord.findUnique({ where: { id: recordId } })
+
+    if (!record) {
+      return res.status(404).json({ message: 'Archive record not found' })
+    }
+
+    const reporter = await resolveArchiveReporter(record)
+
+    if (!reporter) {
+      return res.status(400).json({
+        message: 'Original reporter account no longer exists. Cannot restore this record.',
+      })
+    }
+
+    const status = VALID_REPORT_STATUSES.has(record.status) ? record.status : null
+
+    if (record.entityType === 'lost') {
+      await prisma.lostItem.create({
+        data: {
+          itemName: record.itemName,
+          category: record.category,
+          color: record.color || 'Unknown',
+          description: record.description || '',
+          dateLost: record.date || new Date(),
+          locationLost: record.location || 'Unknown',
+          image: record.image || '',
+          ownerId: reporter.id,
+          status: status || 'Lost',
+          claimerName: record.claimerName,
+        },
+      })
+    } else if (record.entityType === 'found') {
+      await prisma.foundItem.create({
+        data: {
+          itemName: record.itemName,
+          category: record.category,
+          color: record.color || 'Unknown',
+          description: record.description || '',
+          dateFound: record.date || new Date(),
+          locationFound: record.location || 'Unknown',
+          image: record.image || '',
+          finderId: reporter.id,
+          status: status || 'Found',
+          claimerName: record.claimerName,
+        },
+      })
+    } else {
+      return res.status(400).json({ message: 'Invalid archived entity type' })
+    }
+
+    await prisma.archiveRecord.delete({ where: { id: recordId } })
+
+    return res.status(200).json({ message: 'Record restored successfully' })
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Failed to restore archive record',
+      error: error.message,
+    })
+  }
+}
+
+exports.deleteArchiveRecord = async (req, res) => {
+  try {
+    const { recordId } = req.params
+
+    const record = await prisma.archiveRecord.findUnique({ where: { id: recordId } })
+
+    if (!record) {
+      return res.status(404).json({ message: 'Archive record not found' })
+    }
+
+    await prisma.archiveRecord.delete({ where: { id: recordId } })
+
+    return res.status(200).json({
+      message: 'Archive record deleted permanently',
+      deletedRecordId: recordId,
+    })
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Failed to delete archive record',
+      error: error.message,
+    })
+  }
+}
+
+exports.deleteArchiveRecords = async (req, res) => {
+  try {
+    const payload = req.body || {}
+    const recordIds = payload.recordIds || payload.ids || []
+
+    if (!Array.isArray(recordIds) || recordIds.length === 0) {
+      return res.status(400).json({ message: 'Please select at least one archive record to delete' })
+    }
+
+    const normalizedIds = [...new Set(recordIds.filter(Boolean))]
+
+    if (normalizedIds.length === 0) {
+      return res.status(400).json({ message: 'Please select at least one archive record to delete' })
+    }
+
+    const existingRecords = await prisma.archiveRecord.findMany({
+      where: { id: { in: normalizedIds } },
+      select: { id: true },
+    })
+
+    const existingIds = existingRecords.map((item) => item.id)
+
+    if (existingIds.length === 0) {
+      return res.status(404).json({ message: 'No archive records found for deletion' })
+    }
+
+    await prisma.archiveRecord.deleteMany({
+      where: { id: { in: existingIds } },
+    })
+
+    return res.status(200).json({
+      message: 'Archive records deleted permanently',
+      deletedCount: existingIds.length,
+    })
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Failed to delete archive records',
+      error: error.message,
+    })
+  }
+}
+
 exports.getAdminDashboard = async (req, res) => {
   try {
     const [lostItems, foundItems] = await Promise.all([

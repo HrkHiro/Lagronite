@@ -39,6 +39,9 @@ export function ReportDetailModal({ report, onClose, onMessage, onClaimed }) {
               {report.claimerName && (
                 <p className="mt-2 text-sm text-slate-400">Claimed by: {report.claimerName}</p>
               )}
+              {report.claimedAt && (
+                <p className="mt-2 text-sm text-slate-400">Claimed at: {new Date(report.claimedAt).toLocaleString()}</p>
+              )}
             </div>
           </div>
 

@@ -9,9 +9,10 @@ import {
   MdMessage,
   MdCategory,
   MdColorLens,
+  MdDelete,
 } from 'react-icons/md'
 
-export function StudentReportDetailModal({ report, messageCount, onClose, onOpenChat, isDark = true }) {
+export function StudentReportDetailModal({ report, messageCount, onClose, onOpenChat, onDelete, isDark = true }) {
   if (!report) return null
 
   return (
@@ -174,15 +175,25 @@ export function StudentReportDetailModal({ report, messageCount, onClose, onOpen
               </div>
             </div>
 
-            {/* Chat Button */}
-            <button
-              type="button"
-              onClick={onOpenChat}
-              className="w-full rounded-2xl bg-emerald-500 px-6 py-4 text-lg font-semibold text-white transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_0_30px_rgba(52,211,153,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-3"
-            >
-              <MdChat className="text-2xl" />
-              Open Message Thread ({messageCount})
-            </button>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={onOpenChat}
+                className="w-full rounded-2xl bg-emerald-500 px-6 py-4 text-lg font-semibold text-white transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_0_30px_rgba(52,211,153,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-3"
+              >
+                <MdChat className="text-2xl" />
+                Open Message Thread ({messageCount})
+              </button>
+
+              <button
+                type="button"
+                onClick={onDelete}
+                className="w-full rounded-2xl border border-rose-500 px-6 py-4 text-lg font-semibold text-rose-600 transition-all duration-200 hover:bg-rose-500 hover:text-white hover:-translate-y-0.5 flex items-center justify-center gap-3"
+              >
+                <MdDelete className="text-2xl" />
+                Delete Post
+              </button>
+            </div>
           </div>
         </div>
       </div>

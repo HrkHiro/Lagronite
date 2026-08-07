@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CampusFeed } from '../../components/feed/CampusFeed.jsx'
-import { MdGridOn, MdReportProblem, MdCheckCircle, MdCategory } from 'react-icons/md'
+import { MdGridOn, MdReportProblem, MdCheckCircle, MdCategory, MdSearch, MdInsertChart, MdAssignmentReturn } from 'react-icons/md'
 import { useOutletContext } from 'react-router-dom'
 
 const tabs = [
@@ -20,9 +20,23 @@ const categories = [
   'Others',
 ]
 
+function KpiCard({ label, value, icon: Icon, color, isDark }) {
+  return (
+    <div className={`rounded-xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} p-6 backdrop-blur-xl shadow-lg`}>
+      <div className="flex items-center gap-3">
+        <Icon className={`text-2xl ${color}`} />
+        <p className={`text-sm font-medium uppercase tracking-[0.2em] ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{label}</p>
+      </div>
+      <h3 className={`mt-2 text-3xl font-bold sm:text-4xl ${color}`}>{value}</h3>
+    </div>
+  )
+}
+
 export function StudentLostItems() {
   const [activeTab, setActiveTab] = useState('all')
   const [category, setCategory] = useState('')
+  const [search, setSearch] = useState('')
+  const [stats, setStats] = useState({ totalItems: 0, lostCount: 0, foundCount: 0, returnedCount: 0 })
   const { theme } = useOutletContext() // Get theme from layout
 
   const isDark = theme === 'dark'
@@ -97,49 +111,73 @@ export function StudentLostItems() {
               })}
             </div>
 
-            {/* Category filter - LARGER and more visible */}
-            <div className="mt-5 relative max-w-md">
-              <MdCategory className={`absolute left-4 top-1/2 -translate-y-1/2 text-2xl ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className={`w-full pl-12 pr-4 py-3.5 text-base rounded-xl border outline-none transition-all duration-200 appearance-none cursor-pointer ${
-                  isDark
-                    ? 'bg-slate-900/60 border-white/10 text-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50'
-                    : 'bg-white border-gray-200 text-gray-900 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50'
-                }`}
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                  backgroundPosition: 'right 0.75rem center',
-                  backgroundRepeat: 'no-repeat',
-                  backgroundSize: '1.5em 1.5em',
-                  paddingRight: '2.5rem',
-                }}
-              >
-                <option value="" className={isDark ? 'bg-slate-900' : 'bg-white'}>
-                  All Categories
-                </option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat} className={isDark ? 'bg-slate-900' : 'bg-white'}>
-                    {cat}
+            <div className="mt-5 flex flex-col gap-3 md:flex-row">
+              <div className="relative flex-1">
+                <MdSearch className={`absolute left-4 top-1/2 -translate-y-1/2 text-2xl ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search items, colors, locations..."
+                  className={`w-full pl-12 pr-4 py-3.5 text-base rounded-xl border outline-none transition-all duration-200 placeholder:text-base ${
+                    isDark
+                      ? 'bg-slate-900/60 border-white/10 text-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50 placeholder:text-slate-500'
+                      : 'bg-white border-gray-200 text-gray-900 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50 placeholder:text-gray-400'
+                  }`}
+                />
+              </div>
+
+              <div className="relative max-w-md md:w-80">
+                <MdCategory className={`absolute left-4 top-1/2 -translate-y-1/2 text-2xl ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className={`w-full pl-12 pr-4 py-3.5 text-base rounded-xl border outline-none transition-all duration-200 appearance-none cursor-pointer ${
+                    isDark
+                      ? 'bg-slate-900/60 border-white/10 text-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50'
+                      : 'bg-white border-gray-200 text-gray-900 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/50'
+                  }`}
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                    backgroundPosition: 'right 0.75rem center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundSize: '1.5em 1.5em',
+                    paddingRight: '2.5rem',
+                  }}
+                >
+                  <option value="" className={isDark ? 'bg-slate-900' : 'bg-white'}>
+                    All Categories
                   </option>
-                ))}
-              </select>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat} className={isDark ? 'bg-slate-900' : 'bg-white'}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
           <div className="h-1 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 opacity-80" />
+        </div>
+
+        <div className="grid gap-5 mb-8 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard label="Total Reports" value={stats.totalItems || 0} icon={MdInsertChart} color={isDark ? 'text-white' : 'text-gray-900'} isDark={isDark} />
+          <KpiCard label="Lost Items" value={stats.lostCount || 0} icon={MdReportProblem} color={isDark ? 'text-rose-300' : 'text-rose-600'} isDark={isDark} />
+          <KpiCard label="Found Items" value={stats.foundCount || 0} icon={MdCheckCircle} color={isDark ? 'text-sky-300' : 'text-sky-600'} isDark={isDark} />
+          <KpiCard label="Returned" value={stats.returnedCount || 0} icon={MdAssignmentReturn} color={isDark ? 'text-emerald-300' : 'text-emerald-600'} isDark={isDark} />
         </div>
 
         {/* Feed - INCREASED padding */}
         <div className={`anim-rise overflow-hidden rounded-2xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-white'} backdrop-blur-xl shadow-xl`}>
           <div className="p-8 sm:p-10 lg:p-12">
             <CampusFeed
-              key={`${activeTab}-${category}`}
+              key={`${activeTab}-${category}-${search}`}
               type={activeTab}
               category={category}
+              search={search}
               limit={9}
               showPagination
               isDark={isDark}
+              onStats={setStats}
             />
           </div>
         </div>

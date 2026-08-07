@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { ReportDetailModal } from '../../components/admin/ReportDetailModal.jsx'
+import { AdminClaimModal } from '../../components/admin/AdminClaimModal.jsx'
 import { fetchAdminReports, deleteReport, updateReportStatus } from '../../services/reportsService.js'
 import {
   MdVisibility,
@@ -39,6 +40,7 @@ const statusStyles = {
 export function AdminReports() {
   const [reports, setReports] = useState([])
   const [selectedReport, setSelectedReport] = useState(null)
+  const [claimModalReport, setClaimModalReport] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const navigate = useNavigate()
@@ -71,7 +73,7 @@ export function AdminReports() {
   }, [fetchReports])
 
   const handleDelete = async (item) => {
-    if (!window.confirm('Delete this report permanently?')) return
+    if (!window.confirm('Move this report to archive? You can restore it later from the Archive page.')) return
     try {
       await deleteReport(item.reportType, item.id)
       await fetchReports()
@@ -81,13 +83,19 @@ export function AdminReports() {
   }
 
   const markAsClaimed = async (item) => {
-    const claimerName = window.prompt('Enter the student name who claimed the item:')
-    if (!claimerName || !claimerName.trim()) return
+    setClaimModalReport(item)
+  }
+
+  const submitClaim = async ({ claimerName, claimedAt }) => {
+    const item = claimModalReport
+
+    if (!item) return
 
     try {
       const payload = {
         status: 'Claimed',
         claimerName: claimerName.trim(),
+        claimedAt,
         itemName: item.itemName,
         category: item.category,
         color: item.color,
@@ -98,6 +106,7 @@ export function AdminReports() {
       }
       await updateReportStatus(item.reportType, item.id, payload)
       await fetchReports()
+      setClaimModalReport(null)
     } catch (err) {
       alert(err.message)
     }
@@ -317,6 +326,15 @@ export function AdminReports() {
           onMessage={() => handleMessage(selectedReport)}
           onClaimed={() => markAsClaimed(selectedReport)}
           isDark={isDark}
+        />
+      )}
+
+      {claimModalReport && (
+        <AdminClaimModal
+          report={claimModalReport}
+          isDark={isDark}
+          onClose={() => setClaimModalReport(null)}
+          onConfirm={submitClaim}
         />
       )}
     </section>

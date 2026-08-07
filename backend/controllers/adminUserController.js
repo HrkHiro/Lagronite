@@ -93,14 +93,20 @@ exports.activateUser = async (req, res) => {
   }
 };
 
-// DELETE USER
+// DELETE USER (soft delete by lifecycle status)
 exports.deleteUser = async (req, res) => {
   try {
     const { userId } = req.params
 
-    await prisma.user.delete({ where: { id: userId } })
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        status: 'deleted',
+        suspendedUntil: null,
+      },
+    })
 
-    res.json({ message: 'User deleted' })
+    res.json({ message: 'User deleted', user: serializeUser(user) })
   } catch (err) {
     res.status(500).json({
       message: 'Failed to delete user',

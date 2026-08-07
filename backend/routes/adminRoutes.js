@@ -5,6 +5,9 @@ const {
   getAdminDashboard,
   getAdminExportData,
   listArchiveRecords,
+  restoreArchiveRecord,
+  deleteArchiveRecord,
+  deleteArchiveRecords,
 } = require('../controllers/adminController')
 
 const {
@@ -23,6 +26,9 @@ router.use(protect, restrictTo('admin'))
 router.get('/dashboard', getAdminDashboard)
 router.get('/dashboard/export-data', getAdminExportData)
 router.get('/archive', listArchiveRecords)
+router.post('/archive/:recordId/restore', restoreArchiveRecord)
+router.delete('/archive/:recordId', deleteArchiveRecord)
+router.delete('/archive', deleteArchiveRecords)
 
 // users
 router.get('/users', getUsers)

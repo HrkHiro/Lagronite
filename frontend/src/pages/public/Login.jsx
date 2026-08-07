@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { MdEmail, MdLock, MdLogin, MdArrowBack, MdVisibility, MdVisibilityOff } from 'react-icons/md'
 import { useAuth } from '../../hooks/useAuth.js'
 import { loginStudent } from '../../services/authService.js'
+import { AccountStatusModal } from '../../components/AccountStatusModal.jsx'
 
 const initialErrors = { email: '', password: '', form: '' }
 
@@ -18,6 +19,7 @@ export function Login({ isDark: propIsDark }) {
   const [errors, setErrors] = useState(initialErrors)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [blockedModal, setBlockedModal] = useState(null)
 
   // Obtain dark mode from Outlet context when available, otherwise fallback
   const isDark = contextIsDark !== undefined ? contextIsDark : (propIsDark !== undefined ? propIsDark : document.documentElement.classList.contains('dark'))
@@ -70,14 +72,38 @@ export function Login({ isDark: propIsDark }) {
       login(authUser, loginData.rememberMe)
       navigate(getNextRoute(authUser.role), { replace: true })
     } catch (error) {
-      setErrors((current) => ({ ...current, form: error.message }))
+      const message = error?.message || 'Unable to sign in'
+
+      if (error?.status === 403 || /banned|suspended|deleted/i.test(message)) {
+        const type = /banned/i.test(message)
+          ? 'banned'
+          : /deleted/i.test(message)
+            ? 'deleted'
+            : 'suspended'
+
+        setBlockedModal({
+          type,
+          message,
+        })
+      }
+
+      setErrors((current) => ({ ...current, form: message }))
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <section className={`relative min-h-screen overflow-hidden ${isDark ? 'bg-slate-950' : 'bg-gray-50'}`}>
+    <>
+      {blockedModal && (
+        <AccountStatusModal
+          data={blockedModal}
+          onClose={() => setBlockedModal(null)}
+          isDark={isDark}
+        />
+      )}
+
+      <section className={`relative min-h-screen overflow-hidden ${isDark ? 'bg-slate-950' : 'bg-gray-50'}`}>
       <style>{`
         @keyframes riseIn {
           from { opacity: 0; transform: translateY(20px); }
@@ -291,6 +317,7 @@ export function Login({ isDark: propIsDark }) {
           </div>
         </div>
       </div>
-    </section>
+      </section>
+    </>
   )
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
   MdTitle,
@@ -14,6 +14,7 @@ import {
   MdInfo,
   MdSearchOff,
 } from 'react-icons/md'
+import { previewLostItemDraft } from '../../services/reportsService.js'
 
 const initialFormState = {
   itemName: '',
@@ -58,12 +59,58 @@ export function ReportLostItem() {
   const [previewUrl, setPreviewUrl] = useState('')
   const [errors, setErrors] = useState(initialErrors)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
+  const [possibleMatches, setPossibleMatches] = useState([])
+  const [duplicateReviewOpen, setDuplicateReviewOpen] = useState(false)
   const { theme } = useOutletContext() // Get theme from layout
 
   const isDark = theme === 'dark'
 
   const maxDate = useMemo(() => buildDateLimit(), [])
+
+  useEffect(() => {
+    const payload = {
+      itemName: formData.itemName,
+      category: formData.category,
+      color: formData.color,
+      description: formData.description,
+      dateLost: formData.dateLost,
+      locationLost: formData.locationLost,
+    }
+
+    const requiredFields = [
+      payload.itemName,
+      payload.category,
+      payload.color,
+      payload.description,
+      payload.dateLost,
+      payload.locationLost,
+    ]
+
+    const isPayloadReady = requiredFields.every((value) => String(value || '').trim())
+      && String(payload.description || '').trim().length >= 10
+
+    if (!isPayloadReady) {
+      setPossibleMatches([])
+      return undefined
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setPreviewing(true)
+        const data = await previewLostItemDraft(payload)
+        const matches = Array.isArray(data?.possibleMatches) ? data.possibleMatches : []
+        setPossibleMatches(matches)
+      } catch (error) {
+        setPossibleMatches([])
+      } finally {
+        setPreviewing(false)
+      }
+    }, 550)
+
+    return () => window.clearTimeout(timer)
+  }, [formData.itemName, formData.category, formData.color, formData.description, formData.dateLost, formData.locationLost])
 
   const validate = () => {
     const nextErrors = { ...initialErrors }
@@ -103,8 +150,7 @@ export function ReportLostItem() {
     setFormData((current) => ({ ...current, [name]: value }))
   }
 
-  const handleSubmit = async (event) => {
-    event.preventDefault()
+  const submitLostItem = async (overrideDuplicate = false) => {
     setMessage({ type: '', text: '' })
     if (!validate()) return
 
@@ -114,11 +160,23 @@ export function ReportLostItem() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          ignoreDuplicate: overrideDuplicate,
+        }),
       })
       const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
+        const matches = Array.isArray(data?.possibleMatches) ? data.possibleMatches : []
+        setPossibleMatches(matches)
+
+        if (response.status === 409) {
+          setDuplicateReviewOpen(true)
+          setMessage({ type: 'warning', text: data.message || 'Duplicate report detected' })
+          return
+        }
+
         if (data?.errors) {
           setErrors((current) => ({ ...current, ...data.errors, form: data.message || 'Submission failed' }))
         } else {
@@ -127,6 +185,9 @@ export function ReportLostItem() {
         return
       }
 
+      const matches = Array.isArray(data?.possibleMatches) ? data.possibleMatches : []
+      setPossibleMatches(matches)
+      setDuplicateReviewOpen(false)
       setFormData(initialFormState)
       setPreviewUrl('')
       setErrors(initialErrors)
@@ -136,6 +197,15 @@ export function ReportLostItem() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    await submitLostItem(false)
+  }
+
+  const handleProceedAfterReview = async () => {
+    await submitLostItem(true)
   }
 
   return (
@@ -212,18 +282,73 @@ export function ReportLostItem() {
                     ? isDark
                       ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'
                       : 'border-emerald-400/30 bg-emerald-50 text-emerald-800'
-                    : isDark
-                      ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
-                      : 'border-rose-400/30 bg-rose-50 text-rose-800'
+                    : message.type === 'warning'
+                      ? isDark
+                        ? 'border-amber-300/30 bg-amber-500/10 text-amber-100'
+                        : 'border-amber-400/30 bg-amber-50 text-amber-900'
+                      : isDark
+                        ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
+                        : 'border-rose-400/30 bg-rose-50 text-rose-800'
                 }`}
               >
                 {message.type === 'success' ? (
                   <MdCheckCircle className={`text-2xl flex-shrink-0 mt-0.5 ${isDark ? 'text-emerald-300' : 'text-emerald-600'}`} />
+                ) : message.type === 'warning' ? (
+                  <MdInfo className={`text-2xl flex-shrink-0 mt-0.5 ${isDark ? 'text-amber-300' : 'text-amber-700'}`} />
                 ) : (
                   <MdError className={`text-2xl flex-shrink-0 mt-0.5 ${isDark ? 'text-rose-300' : 'text-rose-600'}`} />
                 )}
-                <p className="text-base font-medium">{message.text}</p>
+                <div className="w-full">
+                  <p className="text-base font-medium">{message.text}</p>
+                  {duplicateReviewOpen && possibleMatches.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={handleProceedAfterReview}
+                        className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-400"
+                      >
+                        Review complete — submit anyway
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDuplicateReviewOpen(false)
+                          setPossibleMatches([])
+                          setMessage({ type: 'info', text: 'Duplicate review cancelled' })
+                        }}
+                        className="rounded-xl border border-white/20 px-4 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/10"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
+            )}
+
+            {possibleMatches.length > 0 && (
+              <section className={`mb-8 rounded-3xl border p-6 ${isDark ? 'border-emerald-400/20 bg-emerald-500/10' : 'border-emerald-400/30 bg-emerald-50'}`}>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className={`text-xs font-bold uppercase tracking-[0.22em] ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>Possible matches</p>
+                    <h3 className={`mt-2 text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Similar reports found</h3>
+                  </div>
+                  <span className={`rounded-full px-4 py-2 text-xs font-bold uppercase ${isDark ? 'bg-slate-800 text-emerald-300' : 'bg-white text-emerald-700 border border-emerald-300'}`}>{possibleMatches.length} found</span>
+                </div>
+                <div className="mt-4 grid gap-3">
+                  {possibleMatches.map((match) => (
+                    <article key={match.id} className={`rounded-2xl border p-4 ${isDark ? 'border-white/10 bg-slate-950/40' : 'border-gray-200 bg-white'}`}>
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="font-bold text-emerald-600">{match.report?.itemName}</p>
+                          <p className={`mt-1 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{match.report?.category} • {match.report?.color} • {match.report?.location}</p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-xs font-bold ${isDark ? 'bg-emerald-500/20 text-emerald-200' : 'bg-emerald-100 text-emerald-700'}`}>{Math.round(match.score)}% match</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
             )}
 
             <form className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]" onSubmit={handleSubmit}>
@@ -424,6 +549,39 @@ export function ReportLostItem() {
                     )}
                   </div>
                 </div>
+
+                <section className={`rounded-3xl border p-5 ${isDark ? 'border-teal-400/30 bg-teal-500/10' : 'border-emerald-400/40 bg-emerald-50'}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className={`text-[11px] font-black uppercase tracking-[0.24em] ${isDark ? 'text-teal-300' : 'text-emerald-700'}`}>Duplicate Guard</p>
+                      <h3 className={`mt-2 text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Possible Matches</h3>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-[11px] font-black ${isDark ? 'bg-slate-800 text-teal-200' : 'bg-white text-emerald-700'} border ${isDark ? 'border-white/10' : 'border-emerald-300'}`}>{possibleMatches.length}</span>
+                  </div>
+
+                  {previewing ? (
+                    <div className={`mt-4 flex items-center gap-2 rounded-2xl border border-dashed p-4 ${isDark ? 'border-white/15 text-slate-400' : 'border-gray-300 text-gray-500'}`}>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-300 border-t-transparent" />
+                      <span className="text-sm font-medium">Checking existing reports...</span>
+                    </div>
+                  ) : possibleMatches.length > 0 ? (
+                    <div className="mt-4 space-y-3">
+                      {possibleMatches.map((match) => (
+                        <article key={match.id} className={`rounded-2xl border p-3 ${isDark ? 'border-white/10 bg-slate-900/60' : 'border-gray-200 bg-white'}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className={`font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{match.report?.itemName}</p>
+                              <p className={`mt-1 text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{match.report?.category} • {match.report?.color} • {match.report?.location}</p>
+                            </div>
+                            <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-black ${isDark ? 'bg-emerald-500/20 text-emerald-200' : 'bg-emerald-100 text-emerald-700'}`}>{Math.round(match.score)}%</span>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={`mt-4 rounded-2xl border border-dashed p-4 ${isDark ? 'border-white/15 text-slate-400' : 'border-gray-300 text-gray-500'}`}>No similar reports found yet.</div>
+                  )}
+                </section>
 
                 <div className={`rounded-3xl border ${isDark ? 'border-emerald-400/20 bg-emerald-500/10' : 'border-emerald-400/30 bg-emerald-50'} p-6 backdrop-blur-sm`}>
                   <p className={`flex items-center gap-2 text-base font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import { AdminSuspendModal } from '../../components/admin/AdminSuspendModal.jsx'
 import { fetchAdminUsers, updateUserStatus, deleteUser } from '../../services/adminService.js'
 import {
   MdPeople,
@@ -29,6 +30,10 @@ const statusStyles = {
     dark: 'bg-rose-500/10 border-rose-400/20 text-rose-200',
     light: 'bg-rose-50 border-rose-400/30 text-rose-700',
   },
+  deleted: {
+    dark: 'bg-slate-500/10 border-slate-400/20 text-slate-200',
+    light: 'bg-slate-50 border-slate-400/30 text-slate-700',
+  },
   pending: {
     dark: 'bg-sky-500/10 border-sky-400/20 text-sky-200',
     light: 'bg-sky-50 border-sky-400/30 text-sky-700',
@@ -47,6 +52,7 @@ export function AdminUsers() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [suspendModalUser, setSuspendModalUser] = useState(null)
   const { theme } = useOutletContext() || {}
   
   const isDark = theme === undefined ? true : theme === 'dark'
@@ -80,23 +86,32 @@ export function AdminUsers() {
 
     if (action === 'ban') url = 'ban'
     if (action === 'activate') url = 'activate'
-    if (action === 'suspend') {
-      const days = Number(prompt('Suspend for how many days?'))
-      if (!days || days <= 0) {
-        alert('Invalid number of days')
-        return
-      }
-      const date = new Date()
-      date.setDate(date.getDate() + days)
-      url = 'suspend'
-      body = { until: date.toISOString() }
-    }
 
     try {
       setLoading(true)
       setError('')
       await updateUserStatus(id, url, body)
       await fetchUsers()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const openSuspendModal = (user) => {
+    setSuspendModalUser(user)
+  }
+
+  const submitSuspend = async (selectedUntil) => {
+    if (!suspendModalUser || !selectedUntil) return
+
+    try {
+      setLoading(true)
+      setError('')
+      await updateUserStatus(suspendModalUser._id, 'suspend', { until: selectedUntil })
+      await fetchUsers()
+      setSuspendModalUser(null)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -268,7 +283,7 @@ export function AdminUsers() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => updateStatus(user._id, 'suspend')}
+                    onClick={() => openSuspendModal(user)}
                     className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${
                       isDark
                         ? 'border-amber-500/20 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20'
@@ -308,6 +323,15 @@ export function AdminUsers() {
           </div>
         )}
       </div>
+
+      {suspendModalUser && (
+        <AdminSuspendModal
+          user={suspendModalUser}
+          isDark={isDark}
+          onClose={() => setSuspendModalUser(null)}
+          onConfirm={submitSuspend}
+        />
+      )}
     </section>
   )
 }

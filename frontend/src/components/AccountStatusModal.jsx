@@ -11,6 +11,7 @@ export function AccountStatusModal({ data, onClose, isDark = true }) {
   if (!data) return null
 
   const isBanned = data.type === 'banned'
+  const isDeleted = data.type === 'deleted'
 
   return (
     <div className={`fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-xl ${
@@ -48,7 +49,7 @@ export function AccountStatusModal({ data, onClose, isDark = true }) {
             ? isDark ? 'bg-rose-500/10' : 'bg-rose-100'
             : isDark ? 'bg-amber-500/10' : 'bg-amber-100'
         }`}>
-          {isBanned ? (
+          {isBanned || isDeleted ? (
             <MdBlock className={`text-4xl pulse-icon ${isDark ? 'text-rose-400' : 'text-rose-600'}`} />
           ) : (
             <MdWarning className={`text-4xl pulse-icon ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
@@ -59,18 +60,18 @@ export function AccountStatusModal({ data, onClose, isDark = true }) {
         <h2 className={`text-2xl font-bold text-center md:text-3xl ${
           isDark ? 'text-white' : 'text-gray-900'
         }`}>
-          {isBanned ? 'Account Banned' : 'Account Suspended'}
+          {isBanned ? 'Account Banned' : isDeleted ? 'Account Deleted' : 'Account Suspended'}
         </h2>
 
         {/* Message */}
         <div className={`mt-5 rounded-xl border p-5 ${
-          isBanned
+          isBanned || isDeleted
             ? isDark ? 'border-rose-500/10 bg-rose-500/[0.05]' : 'border-rose-200 bg-rose-50'
             : isDark ? 'border-amber-500/10 bg-amber-500/[0.05]' : 'border-amber-200 bg-amber-50'
         }`}>
           <div className="flex items-start gap-3">
             <MdInfo className={`text-xl flex-shrink-0 mt-0.5 ${
-              isBanned
+              isBanned || isDeleted
                 ? isDark ? 'text-rose-400' : 'text-rose-600'
                 : isDark ? 'text-amber-400' : 'text-amber-600'
             }`} />
@@ -81,7 +82,7 @@ export function AccountStatusModal({ data, onClose, isDark = true }) {
         </div>
 
         {/* Additional Info */}
-        {!isBanned && data.until && (
+        {!isBanned && !isDeleted && data.until && (
           <div className={`mt-4 flex items-center gap-2 text-sm justify-center ${
             isDark ? 'text-slate-400' : 'text-gray-500'
           }`}>
@@ -105,7 +106,7 @@ export function AccountStatusModal({ data, onClose, isDark = true }) {
           <button
             onClick={onClose}
             className={`w-full rounded-xl px-6 py-4 text-lg font-semibold transition-all duration-200 hover:-translate-y-0.5 flex items-center justify-center gap-3 ${
-              isBanned
+              isBanned || isDeleted
                 ? 'bg-rose-500 text-white hover:bg-rose-400 hover:shadow-[0_0_30px_rgba(244,63,94,0.4)]'
                 : 'bg-amber-500 text-white hover:bg-amber-400 hover:shadow-[0_0_30px_rgba(251,191,36,0.4)]'
             }`}

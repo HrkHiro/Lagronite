@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { MdBugReport, MdSend } from 'react-icons/md'
+import { submitSystemQuery } from '../../services/queryService.js'
 
 export function StudentQueries() {
   const { theme } = useOutletContext() || {}
@@ -16,17 +17,7 @@ export function StudentQueries() {
     setMessage('')
 
     try {
-      const auth = JSON.parse(localStorage.getItem('lagronite_auth') || '{}')
-      const response = await fetch('http://localhost:5000/api/queries', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${auth.token || ''}`,
-        },
-        body: JSON.stringify(form),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.message || 'Failed to submit query')
+      await submitSystemQuery(form)
       setMessage('Your bug or enhancement report has been submitted successfully.')
       setForm({ title: '', description: '', severity: 'medium', category: 'bug' })
     } catch (err) {

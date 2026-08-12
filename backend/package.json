@@ -15,14 +15,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-<<<<<<< Updated upstream
-    "bcryptjs": "^3.0.3",
-    "@prisma/adapter-mariadb": "^7.9.0",
-    "@prisma/client": "^7.9.0",
-=======
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
->>>>>>> Stashed changes
     "cloudinary": "^2.10.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -31,21 +25,12 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mailtrap": "^4.6.0",
-<<<<<<< Updated upstream
-    "mariadb": "^3.4.5",
-    "mysql2": "^3.14.3",
-=======
     "mongodb": "^6.9.1",
     "nanoid": "^6.0.0",
->>>>>>> Stashed changes
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
-<<<<<<< Updated upstream
-    "prisma": "^7.9.0",
-    "nodemon": "^3.1.14"
-=======
     "nodemon": "^3.1.14",
     "prisma": "^6.19.3"
 >>>>>>> Stashed changes

@@ -58,39 +58,50 @@ Lagronite/
 │   ├── vite.config.js
 │   ├── src/
 │   └── ... (all frontend files)
+├── package.json (root)
+├── Procfile
 ├── .env (development)
 └── .env.production
 ```
 
+**Important:** Push your changes to GitHub:
+```bash
+git add .
+git commit -m "Fix: resolve merge conflicts and add Railway config"
+git push origin main
+```
+
 ### Step 2: Deploy Backend to Railway
 
-1. **Create a new project** on Railway
-2. **Connect your GitHub repository**
-3. **Create a service** for the backend:
-   - Select "Deploy from GitHub"
-   - Choose your Lagronite repo
-   - Railway auto-detects Node.js + Express
+1. **Create a new Railway project** at [railway.app](https://railway.app)
+2. **Connect GitHub** and select your Lagronite repo
+3. **Create a service for backend:**
+   - Click "Add Service" → "Deploy from GitHub repo"
+   - Railway auto-detects Node.js
 
-4. **Configure Root Directory** (Important!)
-   - In Railway service settings → Deployment
-   - Set `Root Directory` to `backend`
+4. **Configure the Service** (Critical!)
+   - Go to **Service Settings** → **Deployment**
+   - Set **Root Directory** to: `backend`
+   - Set **Start Command** to: `npm run prisma:generate && npm start`
+   - Set **Install Command** to: `npm install`
 
 5. **Add Environment Variables**
-   - Go to Railway Dashboard → Select Backend Service → Variables
-   - Click "Add Variable" and copy these from `.env.production`:
+   - In Railway, go to Variables tab
+   - Add these from `.env.production`:
      ```
-     MONGODB_URI (or DATABASE_URL)
-     JWT_SECRET (⚠️ CHANGE THIS - use a strong secret!)
-     CLOUDINARY_CLOUD_NAME
-     CLOUDINARY_API_KEY
-     CLOUDINARY_API_SECRET
+     DATABASE_URL=<your_mongodb_uri>
+     JWT_SECRET=<strong_secret_change_this>
      FRONTEND_URL=https://lagroniteplatform.site
      NODE_ENV=production
+     CLOUDINARY_CLOUD_NAME=278966646742181
+     CLOUDINARY_API_KEY=<your_key>
+     CLOUDINARY_API_SECRET=<your_secret>
+     PORT=3000
      ```
 
-6. **Railway Auto-assigns a Public URL**
-   - After deployment, Railway gives you a URL like `https://your-app.up.railway.app`
-   - Save this URL for the frontend
+6. **Get Your Backend URL**
+   - After deployment completes, Railway shows your URL: `https://lagronite-production.up.railway.app`
+   - Save this for frontend config
 
 ### Step 3: Deploy Frontend to Railway (or Vercel)
 
@@ -182,11 +193,13 @@ https://lagroniteplatform.site
 
 | Issue | Solution |
 |-------|----------|
+| **"Missing script: start"** | This is now fixed! The root `package.json` has `npm start` configured. Make sure you pushed the latest changes to GitHub. |
 | **CORS error** | Ensure `FRONTEND_URL` is set correctly in Railway backend variables |
 | **API 404 errors** | Check `VITE_API_URL` points to correct backend URL |
 | **MongoDB connection fails** | Verify `DATABASE_URL` is in Railway variables and IP whitelist allows Railway IPs |
-| **Files not found** | Ensure `Root Directory` is set correctly in Railway service settings |
+| **Files not found (404)** | Ensure `Root Directory` is set correctly in Railway service settings |
 | **Domain not working** | Update DNS records to point to Railway/Vercel, then update env variables |
+| **Prisma migration errors** | Railway runs `npm run prisma:generate` automatically - check logs |
 
 ---
 

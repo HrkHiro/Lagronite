@@ -139,7 +139,7 @@ exports.registerStudent = async (req, res) => {
   } catch (error) {
     if (isDatabaseAuthError(error)) {
       return res.status(503).json({
-        message: 'Database write access is not configured correctly. Check DATABASE_URL and your MySQL credentials.',
+        message: 'Database write access is not configured correctly. Check DATABASE_URL and your MongoDB credentials.',
         error: error.message,
       });
     }

@@ -69,7 +69,7 @@ async function startServer() {
     }
 
     await prisma.$connect();
-    console.log('MySQL connected through Prisma');
+    console.log('MongoDB connected through Prisma');
 
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
       console.warn('Cloudinary is not configured. Image uploads will store local data URIs in development.');

@@ -27,36 +27,62 @@ const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
 
 app.set('trust proxy', 1);
 
-const extraOrigins = [process.env.FRONTEND_URL, process.env.CORS_ORIGINS]
+const extraOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.CORS_ORIGINS,
+]
   .filter(Boolean)
-  .flatMap((value) => value.split(','))
-  .map((origin) => origin.trim())
+  .flatMap(value => value.split(','))
+  .map(origin => origin.trim())
   .filter(Boolean);
-
-if (process.env.RAILWAY_PUBLIC_DOMAIN) {
-  extraOrigins.push(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
-}
 
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
+
   'https://lagroniteplatform.site',
   'https://www.lagroniteplatform.site',
+  'https://lagronite.onrender.com',
+
   ...extraOrigins,
 ];
 
 function isAllowedOrigin(origin) {
+  // Requests without Origin are allowed
   if (!origin) return true;
-  if (allowedOrigins.includes(origin)) return true;
+
+  // Exact match
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
 
   try {
     const { hostname } = new URL(origin);
-    return hostname === 'lagroniteplatform.site'
-      || hostname === 'www.lagroniteplatform.site'
-      || hostname.endsWith('.up.railway.app')
-      || hostname.endsWith('.railway.app');
+
+    // Production domains
+    if (
+      hostname === 'lagroniteplatform.site' ||
+      hostname === 'www.lagroniteplatform.site'
+    ) {
+      return true;
+    }
+
+    // Render
+    if (hostname.endsWith('.onrender.com')) {
+      return true;
+    }
+
+    // Railway
+    if (
+      hostname.endsWith('.up.railway.app') ||
+      hostname.endsWith('.railway.app')
+    ) {
+      return true;
+    }
+
+    return false;
   } catch {
     return false;
   }

@@ -1,10 +1,10 @@
 const prisma = require('../utils/prisma');
 const { serializeLostItem } = require('../utils/serializers');
-const { uploadItemImage } = require('../utils/cloudinary');
+const { saveItemImageLocally } = require('../utils/localUpload');
 
 exports.createLostItem = async (req, res) => {
   try {
-    const imageUrl = await uploadItemImage(req.body.image);
+    const imageUrl = await saveItemImageLocally(req.body.image);
 
     const lostItem = await prisma.lostItem.create({
       data: {

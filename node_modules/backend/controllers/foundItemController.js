@@ -1,6 +1,6 @@
 const prisma = require('../utils/prisma');
 const { serializeFoundItem } = require('../utils/serializers');
-const { uploadItemImage } = require('../utils/cloudinary');
+const { saveItemImageLocally } = require('../utils/localUpload');
 
 exports.createFoundItem = async (req, res) => {
   try {
@@ -10,7 +10,7 @@ exports.createFoundItem = async (req, res) => {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    const imageUrl = await uploadItemImage(image);
+    const imageUrl = await saveItemImageLocally(image);
 
     const foundItem = await prisma.foundItem.create({
       data: {

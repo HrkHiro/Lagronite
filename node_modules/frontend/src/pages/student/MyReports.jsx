@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
+import { apiUrl, getAuthHeaders } from '../../services/api.js'
 import { StudentReportDetailModal } from '../../components/student/ReportDetailModal.jsx'
 import {
   MdSearch,
@@ -130,10 +131,10 @@ export function StudentMyReports() {
       if (status !== 'All') params.set('status', status)
 
       try {
-        const res = await fetch(
-          `http://localhost:5000/api/reports?${params.toString()}`,
-          { credentials: 'include' }
-        )
+        const res = await fetch(apiUrl(`/api/reports?${params.toString()}`), {
+          credentials: 'include',
+          headers: getAuthHeaders(),
+        })
         const data = await res.json()
         if (!cancelled) {
           setReports(data.reports || [])
@@ -160,8 +161,9 @@ export function StudentMyReports() {
 
   const fetchChatCount = async (report) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/chats/${report.reportType}/${report.id}`, {
+      const res = await fetch(apiUrl(`/api/chats/${report.reportType}/${report.id}`), {
         credentials: 'include',
+        headers: getAuthHeaders(),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Unable to load chat')

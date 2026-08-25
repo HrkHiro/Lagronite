@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from './useAuth'
+import { apiUrl, getAuthHeaders } from '../services/api.js'
 
 export function useAccountWatcher() {
   const { user, logout } = useAuth()
@@ -10,8 +11,9 @@ export function useAccountWatcher() {
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/auth/me', {
+        const res = await fetch(apiUrl('/api/auth/me'), {
           credentials: 'include',
+          headers: getAuthHeaders(),
         })
 
         const data = await res.json()

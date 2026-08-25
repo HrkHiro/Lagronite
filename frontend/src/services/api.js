@@ -1,4 +1,32 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const configuredApiUrl = import.meta.env.VITE_API_URL
+
+function resolveApiBaseUrl() {
+	const trimmed = typeof configuredApiUrl === 'string' ? configuredApiUrl.replace(/\/$/, '') : ''
+	const isLocalhost = /localhost|127\.0\.0\.1/.test(trimmed)
+
+	if (trimmed && !isLocalhost) {
+		return trimmed
+	}
+
+	return import.meta.env.DEV ? 'http://localhost:5000' : ''
+}
+
+export const API_BASE_URL = resolveApiBaseUrl()
+
+export const SOCKET_URL = API_BASE_URL || undefined
+
+export function apiUrl(path) {
+	return `${API_BASE_URL}${path}`
+}
+
+export function getAuthHeaders(extra = {}) {
+	const token = readStoredToken()
+
+	return {
+		...(token ? { Authorization: `Bearer ${token}` } : {}),
+		...extra,
+	}
+}
 
 const AUTH_STORAGE_KEY = 'lagronite_auth'
 

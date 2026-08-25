@@ -4,6 +4,7 @@ import { FilterPanel } from '../../components/search/FilterPanel.jsx'
 import { ItemCard } from '../../components/search/ItemCard.jsx'
 import { Pagination } from '../../components/search/Pagination.jsx'
 import { SearchBar } from '../../components/search/SearchBar.jsx'
+import { apiUrl, getAuthHeaders } from '../../services/api.js'
 import {
   MdSearch,
   MdClose,
@@ -151,8 +152,9 @@ export function SearchItems() {
       if (filters.date) params.set('date', filters.date)
       if (filters.status !== 'All') params.set('status', filters.status)
 
-      const response = await fetch(`http://localhost:5000/api/reports?${params.toString()}`, {
+      const response = await fetch(apiUrl(`/api/reports?${params.toString()}`), {
         credentials: 'include',
+        headers: getAuthHeaders(),
       })
       const data = await response.json().catch(() => ({}))
 

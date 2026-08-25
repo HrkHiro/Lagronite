@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useOutletContext } from 'react-router-dom'
 import { io } from 'socket.io-client'
-import { readStoredToken } from '../../services/api.js'
+import { readStoredToken, apiUrl, getAuthHeaders, SOCKET_URL } from '../../services/api.js'
 import {
   MdArrowBack,
   MdSend,
@@ -42,8 +42,8 @@ export function StudentReportChat() {
       try {
         setLoading(true)
         const res = await fetch(
-          `http://localhost:5000/api/chats/${reportType}/${reportId}`,
-          { credentials: 'include' }
+          apiUrl(`/api/chats/${reportType}/${reportId}`),
+          { credentials: 'include', headers: getAuthHeaders() }
         )
         const data = await res.json()
         if (!res.ok) throw new Error(data.message || 'Unable to load chat')
@@ -69,7 +69,7 @@ export function StudentReportChat() {
       return
     }
 
-    const newSocket = io('http://localhost:5000', {
+    const newSocket = io(SOCKET_URL, {
       auth: { token },
       reconnection: true,
       reconnectionDelay: 1000,
@@ -117,11 +117,11 @@ export function StudentReportChat() {
     try {
       setSending(true)
       const res = await fetch(
-        `http://localhost:5000/api/chats/${reportType}/${reportId}`,
+        apiUrl(`/api/chats/${reportType}/${reportId}`),
         {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ text: message }),
         }
       )

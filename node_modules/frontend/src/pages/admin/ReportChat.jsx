@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useOutletContext } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import { fetchReportChat, sendReportMessage } from '../../services/reportsService.js'
-import { readStoredToken } from '../../services/api.js'
+import { readStoredToken, SOCKET_URL } from '../../services/api.js'
 import {
   MdChat,
   MdArrowBack,
@@ -66,7 +66,7 @@ export function ReportChat() {
       return
     }
 
-    const newSocket = io('http://localhost:5000', {
+    const newSocket = io(SOCKET_URL, {
       auth: { token },
       reconnection: true,
       reconnectionDelay: 1000,

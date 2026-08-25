@@ -1,7 +1,9 @@
+const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
 const http = require('http');
@@ -21,25 +23,49 @@ const adminRoutes = require('./routes/adminRoutes')
 
 const app = express();
 const port = process.env.PORT || 5000;
+const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
 
-// Support multiple origins for localhost and production
+app.set('trust proxy', 1);
+
+const extraOrigins = [process.env.FRONTEND_URL, process.env.CORS_ORIGINS]
+  .filter(Boolean)
+  .flatMap((value) => value.split(','))
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+  extraOrigins.push(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+}
+
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
-  process.env.FRONTEND_URL || 'http://localhost:5173',
   'https://lagroniteplatform.site',
   'https://www.lagroniteplatform.site',
-].filter(Boolean);
+  ...extraOrigins,
+];
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === 'lagroniteplatform.site'
+      || hostname === 'www.lagroniteplatform.site'
+      || hostname.endsWith('.up.railway.app')
+      || hostname.endsWith('.railway.app');
+  } catch {
+    return false;
+  }
+}
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-      
-      if (allowedOrigins.includes(origin)) {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -64,6 +90,15 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    if (req.path.startsWith('/api') || req.path === '/health') return next();
+    return res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
+
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
@@ -78,9 +113,9 @@ app.use((error, req, res, next) => {
 
 async function startServer() {
   try {
-    const databaseUrl = process.env.DATABASE_URL;
+    const databaseUrl = process.env.MONGODB_URI || process.env.DATABASE_URL;
     if (!databaseUrl) {
-      throw new Error('DATABASE_URL is missing from .env');
+      throw new Error('MONGODB_URI or DATABASE_URL is missing');
     }
 
     if (!process.env.JWT_SECRET) {
@@ -101,8 +136,7 @@ async function startServer() {
     const io = new Server(server, {
       cors: {
         origin: (origin, callback) => {
-          if (!origin) return callback(null, true);
-          if (allowedOrigins.includes(origin)) {
+          if (isAllowedOrigin(origin)) {
             callback(null, true);
           } else {
             callback(new Error('Not allowed by CORS'));
@@ -185,8 +219,8 @@ async function startServer() {
       });
     });
 
-    server.listen(port, () => {
-      console.log(`Backend server running on port ${port}`);
+    server.listen(port, '0.0.0.0', () => {
+      console.log(`Server running on port ${port}`);
     });
   } catch (error) {
     console.error('Database connection failed:', error.message);

@@ -11,10 +11,10 @@
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "build:backend": "cd backend && npm run prisma:generate",
-    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "npm run prisma:generate --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend",
     "build": "npm run build:backend && npm run build:frontend",
-    "start": "cd backend && npm start"
+    "start": "node backend/index.js"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

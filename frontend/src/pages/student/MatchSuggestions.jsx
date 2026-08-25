@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import { ComparisonModal } from '../../components/match/ComparisonModal.jsx'
 import { MatchCard } from '../../components/match/MatchCard.jsx'
 import { buildMatchSuggestions } from '../../utils/matchAlgorithm.js'
+import { apiUrl, getAuthHeaders } from '../../services/api.js'
 import { MdSearch, MdCompareArrows, MdCheckCircle } from 'react-icons/md'
 
 function splitReports(reports) {
@@ -72,8 +73,9 @@ export function MatchSuggestions() {
       setLoading(true)
       setError('')
       try {
-        const response = await fetch(`http://localhost:5000/api/reports?page=1&limit=100`, {
+        const response = await fetch(apiUrl('/api/reports?page=1&limit=100'), {
           credentials: 'include',
+          headers: getAuthHeaders(),
         })
         const data = await response.json().catch(() => ({}))
 

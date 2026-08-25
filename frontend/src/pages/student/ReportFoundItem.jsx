@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import { apiUrl, getAuthHeaders } from '../../services/api.js'
 import {
   MdTitle,
   MdCategory,
@@ -109,9 +110,9 @@ export function ReportFoundItem() {
 
     setIsSubmitting(true)
     try {
-      const response = await fetch('http://localhost:5000/api/found-items', {
+      const response = await fetch(apiUrl('/api/found-items'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         credentials: 'include',
         body: JSON.stringify(formData),
       })

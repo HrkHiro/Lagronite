@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import { apiUrl, getAuthHeaders } from '../../services/api.js'
 import Webcam from 'react-webcam'
 import {
   MdPhotoLibrary,
@@ -107,8 +108,8 @@ export function CreateReport() {
     try {
       const endpoint =
         form.type === 'lost'
-          ? 'http://localhost:5000/api/lost-items'
-          : 'http://localhost:5000/api/found-items'
+          ? apiUrl('/api/lost-items')
+          : apiUrl('/api/found-items')
 
       const payload =
         form.type === 'lost'
@@ -133,7 +134,7 @@ export function CreateReport() {
 
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         credentials: 'include',
         body: JSON.stringify(payload),
       })

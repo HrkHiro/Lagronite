@@ -14,7 +14,8 @@
     "build:backend": "npm run prisma:generate --workspace=backend",
     "build:frontend": "npm run build --workspace=frontend",
     "build": "npm run build:backend && npm run build:frontend",
-    "start": "node backend/index.js"
+    "start": "node backend/index.js",
+    "render:build": "npm install && npm run prisma:generate --workspace=backend && npm run build:frontend"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

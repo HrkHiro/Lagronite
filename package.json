@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "lagronite",
   "version": "1.0.0",
   "description": "Smart Lost and Found Platform for Campus",
@@ -14,7 +14,8 @@
     "build:backend": "npm run prisma:generate --workspace=backend",
     "build:frontend": "npm run build --workspace=frontend",
     "build": "npm run build:backend && npm run build:frontend",
-    "start": "node backend/index.js"
+    "start": "node backend/index.js",
+    "postinstall": "npm run prisma:generate --workspace=backend"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

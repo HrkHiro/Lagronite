@@ -1,12 +1,15 @@
-[variables]
+﻿[variables]
 NIXPACKS_NODE_VERSION = "20"
 NPM_CONFIG_PRODUCTION = "false"
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["npm install --no-audit --no-fund"]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = [
+  "npm run prisma:generate --workspace=backend",
+  "npm run build:frontend"
+]
 
 [start]
 cmd = "npm start"

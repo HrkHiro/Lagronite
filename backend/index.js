@@ -36,46 +36,55 @@ const extraOrigins = [
   .map(origin => origin.trim())
   .filter(Boolean);
 
-  const allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000',
-  
-    'https://lagroniteplatform.site',
-    'https://www.lagroniteplatform.site',
-  
-    'https://lagronite.onrender.com',
-    'https://lagronite-backend.onrender.com',
-  
-    // Vercel frontend
-    'https://lagronite-53vc8561p-lagronite.vercel.app',
-  
-    ...extraOrigins,
-  ];
+if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+  extraOrigins.push(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+}
 
-  function isAllowedOrigin(origin) {
-    if (!origin) return true;
-  
-    if (allowedOrigins.includes(origin)) {
-      return true;
-    }
-  
-    try {
-      const { hostname } = new URL(origin);
-  
-      return (
-        hostname === 'lagroniteplatform.site' ||
-        hostname === 'www.lagroniteplatform.site' ||
-        hostname.endsWith('.onrender.com') ||
-        hostname.endsWith('.up.railway.app') ||
-        hostname.endsWith('.railway.app') ||
-        hostname.endsWith('.vercel.app')
-      );
-    } catch {
-      return false;
-    }
+const allowedOrigins = [
+  // Local development
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+
+  // Production
+  'https://lagroniteplatform.site',
+  'https://www.lagroniteplatform.site',
+
+  // Render
+  'https://lagronite.onrender.com',
+  'https://lagronite-backend.onrender.com',
+
+  // Vercel frontend
+  'https://lagronite-53vc8561p-lagronite.vercel.app',
+
+  ...extraOrigins,
+];
+
+function isAllowedOrigin(origin) {
+  // Requests without an Origin header
+  if (!origin) return true;
+
+  // Exact allowed origin
+  if (allowedOrigins.includes(origin)) {
+    return true;
   }
+
+  try {
+    const { hostname } = new URL(origin);
+
+    return (
+      hostname === 'lagroniteplatform.site' ||
+      hostname === 'www.lagroniteplatform.site' ||
+      hostname.endsWith('.onrender.com') ||
+      hostname.endsWith('.vercel.app') ||
+      hostname.endsWith('.up.railway.app') ||
+      hostname.endsWith('.railway.app')
+    );
+  } catch {
+    return false;
+  }
+}
 
 app.use(
   cors({
@@ -83,12 +92,14 @@ app.use(
       if (isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        console.error('Blocked CORS origin:', origin);
+        callback(new Error(`Not allowed by CORS: ${origin}`));
       }
     },
     credentials: true,
-  }),
+  })
 );
+
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use(cookieParser());

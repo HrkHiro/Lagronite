@@ -36,57 +36,46 @@ const extraOrigins = [
   .map(origin => origin.trim())
   .filter(Boolean);
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://127.0.0.1:5173',
-  'http://127.0.0.1:3000',
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+  
+    'https://lagroniteplatform.site',
+    'https://www.lagroniteplatform.site',
+  
+    'https://lagronite.onrender.com',
+    'https://lagronite-backend.onrender.com',
+  
+    // Vercel frontend
+    'https://lagronite-53vc8561p-lagronite.vercel.app',
+  
+    ...extraOrigins,
+  ];
 
-  'https://lagroniteplatform.site',
-  'https://www.lagroniteplatform.site',
-  'https://lagronite.onrender.com',
-
-  ...extraOrigins,
-];
-
-function isAllowedOrigin(origin) {
-  // Requests without Origin are allowed
-  if (!origin) return true;
-
-  // Exact match
-  if (allowedOrigins.includes(origin)) {
-    return true;
+  function isAllowedOrigin(origin) {
+    if (!origin) return true;
+  
+    if (allowedOrigins.includes(origin)) {
+      return true;
+    }
+  
+    try {
+      const { hostname } = new URL(origin);
+  
+      return (
+        hostname === 'lagroniteplatform.site' ||
+        hostname === 'www.lagroniteplatform.site' ||
+        hostname.endsWith('.onrender.com') ||
+        hostname.endsWith('.up.railway.app') ||
+        hostname.endsWith('.railway.app') ||
+        hostname.endsWith('.vercel.app')
+      );
+    } catch {
+      return false;
+    }
   }
-
-  try {
-    const { hostname } = new URL(origin);
-
-    // Production domains
-    if (
-      hostname === 'lagroniteplatform.site' ||
-      hostname === 'www.lagroniteplatform.site'
-    ) {
-      return true;
-    }
-
-    // Render
-    if (hostname.endsWith('.onrender.com')) {
-      return true;
-    }
-
-    // Railway
-    if (
-      hostname.endsWith('.up.railway.app') ||
-      hostname.endsWith('.railway.app')
-    ) {
-      return true;
-    }
-
-    return false;
-  } catch {
-    return false;
-  }
-}
 
 app.use(
   cors({
